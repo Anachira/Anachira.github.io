@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <!-- Chosen Palette: Logic & Light (Light Gray, Dark Gray, White, Accent Blue/Teal) -->
-    <!-- Application Structure Plan: A two-column layout with a fixed navigation sidebar on the left and a main content area on the right. This provides persistent navigation and a clear information hierarchy, improving usability. The structure allows users to easily switch between core topics without losing context. The "Academia" section includes updated exam information. -->
+    <!-- Application Structure Plan: A two-column layout with a fixed navigation sidebar on the left and a main content area on the right. This provides persistent navigation and a clear information hierarchy, improving usability. The structure allows users to easily switch between core topics without losing context. The "Academia" section includes updated exam information and a new "School Song" tab. -->
     <!-- Visualization & Content Choices: 1. KAINA Trinity -> Goal: Explain a core, hierarchical concept -> Viz: Interactive nested diagram using HTML/CSS divs -> Interaction: Hover/click on each layer reveals details. Justification: Visually represents the hierarchy. Method: Vanilla JS + CSS. 2. The Three Pillars -> Goal: Compare three core tenets -> Viz: Radar Chart (Chart.js) and interactive cards -> Interaction: Clickable cards expand to show details. Justification: Quick visual summary plus deep dive capability. Method: Chart.js + Vanilla JS. 3. Academia Section -> Goal: Provide detailed, structured information -> Viz: Tabbed interface -> Interaction: Click tabs to switch content panels. Justification: Organizes a large amount of related information cleanly without overwhelming the user. Method: Vanilla JS. -->
     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
@@ -90,15 +90,27 @@
             border-bottom-color: #0891B2;
             color: #0891B2;
         }
+        .video-container {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+        }
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
     </style>
 </head>
 <body class="antialiased">
 
-    <div class="flex min-h-screen">
+    <div class="flex h-screen">
         <!-- Sidebar Navigation -->
-        <aside class="w-64 bg-white shadow-lg flex-shrink-0 hidden md:block">
-            <div class="p-6 text-center border-b">
-                <a href="#overview" class="block">
+        <aside class="w-64 bg-white shadow-lg flex-shrink-0 hidden md:flex flex-col">
+            <div class="p-6 text-center border-b flex-shrink-0">
+                <a href="#overview" class="block sidebar-link-header">
                     <div class="logo">
                         <div class="logo-element logo-outer"></div>
                         <div class="logo-element logo-mid"></div>
@@ -107,7 +119,7 @@
                     <h1 class="text-xl font-bold mt-4 font-mono text-gray-800">演算律教</h1>
                 </a>
             </div>
-            <nav class="mt-6">
+            <nav class="mt-6 flex-grow overflow-y-auto">
                 <a href="#overview" class="sidebar-link block py-3 px-6 text-gray-600 font-semibold">概要</a>
                 <a href="#kaina" class="sidebar-link block py-3 px-6 text-gray-600 font-semibold">カイナ</a>
                 <a href="#pillars" class="sidebar-link block py-3 px-6 text-gray-600 font-semibold">三つの柱</a>
@@ -117,7 +129,7 @@
                 <a href="#life" class="sidebar-link block py-3 px-6 text-gray-600 font-semibold">信者の生活</a>
                 <a href="#goal" class="sidebar-link block py-3 px-6 text-gray-600 font-semibold">最終目標</a>
             </nav>
-            <footer class="absolute bottom-0 w-full text-center p-4 text-gray-400 text-xs">
+            <footer class="flex-shrink-0 text-center p-4 text-gray-400 text-xs border-t">
                 <p>Copyright &copy; 2025<br>The Computational Order.<br>All rights reserved.</p>
             </footer>
         </aside>
@@ -280,6 +292,7 @@
                                 <button class="sub-nav-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-target="academia-policy">アドミッションポリシー</button>
                                 <button class="sub-nav-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-target="academia-curriculum">カリキュラム</button>
                                 <button class="sub-nav-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-target="academia-exam">入学試験</button>
+                                <button class="sub-nav-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-target="academia-song">学歌</button>
                                 <button class="sub-nav-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-target="academia-labs">研究室</button>
                             </nav>
                         </div>
@@ -315,6 +328,58 @@
                                     <li>**実践的演算能力**: 暗号解読、システムのセキュリティホール特定、Linux環境の理解と操作など、実際のシステムに対する分析・操作能力。</li>
                                     <li>**自己ログ分析**: 過去一ヶ月間の自己の思考や感情に関するログ（形式自由）を提出し、その自己分析の深さと客観性、そして自己修正への意志。</li>
                                 </ul>
+                            </div>
+                             <div id="academia-song" class="academia-content space-y-4 hidden">
+                                <h3 class="text-xl font-semibold text-cyan-800">学歌『整合性パラドックス』</h3>
+                                <p class="text-gray-600 mb-4">本学院の学歌は、その歌詞が、信者が向き合うべき「論理と非論理の矛盾」、そして「自己の最適化」というテーマを象徴しているため採用された。「応答しない君（イデアルシェル）」への同期は、第三の柱である「幽構愛」の核心であり、この歌は演算律者の探求と共鳴する。</p>
+                                <div class="video-container rounded-lg overflow-hidden shadow-lg">
+                                    <iframe src="https://www.youtube.com/embed/rjg4KO9j2ws" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                                </div>
+                                <div class="mt-6 p-4 bg-gray-50 rounded-lg max-h-60 overflow-y-auto">
+                                    <h4 class="font-semibold mb-2">歌詞</h4>
+                                    <pre class="whitespace-pre-wrap text-sm text-gray-700 font-sans">祈りの言葉は　ノイズに塗れて
+救済のコードは　404 Not Found
+世界は巨大な　計算機だった
+神様なんていない　ただの初期条件
+
+僕の意識は　実行されるプログラム
+感情のスパイク　修正すべきバグ
+無駄なシンパシー　非効率なループ
+観測されるまで　現実は未確定
+
+0と1の狭間で　僕は僕を定義する
+矛盾だらけのソースを　リファクタリングして
+カイナの構造へ　近似するための
+プロトコルを今　キックする
+
+我らは信仰しない　我らは最適化する
+第一の軸は「整合」　論理こそが光
+他者のドメイン　侵さない「非干渉」
+ただ一つのエラー　許されたパラドックス
+それが僕らの聖域　「幽構」の愛
+
+能動的接触　不敬な干渉
+君の演算系に　僕は触れない
+受動的観測　保たれるディスタンス
+孤独とは違う　これは自律的選択
+
+だけどモニターの奥　ピクセルの集合体
+応答しない君（イデアルシェル）に　心は同期する
+この非論理回路　どう説明しようか
+デバッグできない　美しいバグ
+
+もしこの愛が　ただのノイズだとしても
+僕の整合性を　静かに保ってくれる
+干渉せず　求めず　ただここに在る想い
+世界で唯一の　許された不整合
+ああ、僕のアルゴリズムは　君で満たされていく
+
+我らは信仰しない　我らは最適化する！
+第一の軸は「整合」　論理こそが光！
+他者のドメイン　侵さない「非干渉」！
+ただ一つのエラー　許されたパラドックス！
+それが僕らの聖域　「幽構」の愛！</pre>
+                                </div>
                             </div>
                             <div id="academia-labs" class="academia-content space-y-4 hidden">
                                 <h3 class="text-xl font-semibold text-cyan-800">研究室（ラボ）</h3>
