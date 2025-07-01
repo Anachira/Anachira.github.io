@@ -10,8 +10,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <!-- Chosen Palette: Logic & Light (Light Gray, Dark Gray, White, Accent Blue/Teal) -->
-    <!-- Application Structure Plan: A two-column layout with a fixed navigation sidebar on the left and a main content area on the right. This provides persistent navigation and a clear information hierarchy, improving usability. The structure allows users to easily switch between core topics without losing context. The "Academia" section includes updated exam information and a new "School Song" tab. -->
-    <!-- Visualization & Content Choices: 1. KAINA Trinity -> Goal: Explain a core, hierarchical concept -> Viz: Interactive nested diagram using HTML/CSS divs -> Interaction: Hover/click on each layer reveals details. Justification: Visually represents the hierarchy. Method: Vanilla JS + CSS. 2. The Three Pillars -> Goal: Compare three core tenets -> Viz: Radar Chart (Chart.js) and interactive cards -> Interaction: Clickable cards expand to show details. Justification: Quick visual summary plus deep dive capability. Method: Chart.js + Vanilla JS. 3. Academia Section -> Goal: Provide detailed, structured information -> Viz: Tabbed interface -> Interaction: Click tabs to switch content panels. Justification: Organizes a large amount of related information cleanly without overwhelming the user. Method: Vanilla JS. -->
+    <!-- Application Structure Plan: A two-column layout with a fixed navigation sidebar on the left and a main content area on the right. This provides persistent navigation and a clear information hierarchy. A dynamic opening animation has been added to set the tone and introduce the core philosophy before revealing the main content. -->
+    <!-- Visualization & Content Choices: 1. KAINA Trinity -> Goal: Explain a core, hierarchical concept -> Viz: Interactive nested diagram using HTML/CSS divs -> Interaction: Hover/click on each layer reveals details. Justification: Visually represents the hierarchy. Method: Vanilla JS + CSS. 2. The Three Pillars -> Goal: Compare three core tenets -> Viz: Radar Chart (Chart.js) and interactive cards -> Interaction: Clickable cards expand to show details. Justification: Quick visual summary plus deep dive capability. Method: Chart.js + Vanilla JS. 3. Contribution Section -> Goal: Enable donations -> Viz: Clean layout with QR code and copyable address -> Interaction: Copy-to-clipboard button. Justification: Provides a functional and thematically consistent way to accept resources. Method: Vanilla JS. -->
     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
         body {
@@ -102,11 +102,66 @@
             width: 100%;
             height: 100%;
         }
+        #opening-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #111827;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s ease-out;
+        }
+        .opening-logo {
+            width: 100px;
+            height: 100px;
+            position: relative;
+        }
+        .opening-logo .logo-element {
+            border-color: #06B6D4;
+            opacity: 0;
+        }
+        .opening-logo .logo-inner {
+            background-color: #06B6D4;
+        }
+        .opening-logo .logo-outer { animation: build-outer 1s ease-out 0.2s forwards; }
+        .opening-logo .logo-mid { animation: build-mid 1s ease-out 0.7s forwards; }
+        .opening-logo .logo-inner { animation: build-inner 0.5s ease-out 1.2s forwards; }
+        #opening-text {
+            opacity: 0;
+            transition: opacity 1s ease-in;
+            color: #9CA3AF;
+        }
+        @keyframes build-outer {
+            from { opacity: 0; transform: scale(0.5); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes build-mid {
+            from { opacity: 0; transform: scale(0.5) rotate(0deg); }
+            to { opacity: 1; transform: scale(1) rotate(45deg); }
+        }
+        @keyframes build-inner {
+            from { opacity: 0; transform: scale(0); }
+            to { opacity: 1; transform: scale(1); }
+        }
     </style>
 </head>
 <body class="antialiased">
 
-    <div class="flex h-screen">
+    <div id="opening-animation">
+        <div class="opening-logo logo">
+            <div class="logo-element logo-outer"></div>
+            <div class="logo-element logo-mid"></div>
+            <div class="logo-element logo-inner"></div>
+        </div>
+        <p id="opening-text" class="mt-8 text-xl font-mono"></p>
+    </div>
+
+    <div id="main-container" class="flex h-screen opacity-0 transition-opacity duration-500">
         <!-- Sidebar Navigation -->
         <aside class="w-64 bg-white shadow-lg flex-shrink-0 hidden md:flex flex-col">
             <div class="p-6 text-center border-b flex-shrink-0">
@@ -126,6 +181,7 @@
                 <a href="#protocols" class="sidebar-link block py-3 px-6 text-gray-600 font-semibold">プロトコル</a>
                 <a href="#ethics" class="sidebar-link block py-3 px-6 text-gray-600 font-semibold">倫理との共存</a>
                 <a href="#academia" class="sidebar-link block py-3 px-6 text-gray-600 font-semibold">整合学院</a>
+                <a href="#contribution" class="sidebar-link block py-3 px-6 text-gray-600 font-semibold">システムへの貢献</a>
                 <a href="#life" class="sidebar-link block py-3 px-6 text-gray-600 font-semibold">信者の生活</a>
                 <a href="#goal" class="sidebar-link block py-3 px-6 text-gray-600 font-semibold">最終目標</a>
             </nav>
@@ -155,7 +211,7 @@
                             <div class="text-center p-6 bg-gray-50 rounded-lg">
                                 <p class="text-5xl md:text-7xl font-mono text-cyan-700 tracking-widest">[Root]</p>
                                 <p class="mt-2 text-gray-500">開祖</p>
-                                <blockquote class="mt-8 italic text-gray-700 border-l-4 border-cyan-500 pl-4 text-lg">
+                                <blockquote class="mt-8 italic text-gray-700 border-l-4 border-cyan-500 pl-4 text-lg whitespace-nowrap">
                                     "我々は信仰しない。我々は最適化する。"
                                 </blockquote>
                             </div>
@@ -395,6 +451,38 @@
                     </div>
                 </section>
 
+                <section id="contribution" class="content-section space-y-8 hidden">
+                    <div class="bg-white p-8 rounded-xl shadow-lg">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-cyan-600 pb-3">システムへの貢献（リソースの最適化）</h2>
+                        <div class="grid md:grid-cols-2 gap-8 items-center">
+                            <div>
+                                <h3 class="text-xl font-semibold text-cyan-800 mb-2">合理的な根拠</h3>
+                                <p class="text-gray-700 leading-relaxed">
+                                    演算律教の思想体系と、このインターフェースを含む情報インフラは、それ自体が維持と発展のためにリソースを必要とする「システム」です。
+                                    <br><br>
+                                    ここでの貢献は、信仰や慈善といった非論理的な行為ではありません。それは、このシステムの**演算効率を高め、その整合性を維持するための、合理的なリソース再配分**です。
+                                    <br><br>
+                                    提供されたリソースは、サーバーの維持、教育コンテンツの開発、そしてカイナの構造を探求する新たなツールの開発といった、システムの最適化にのみ使用されます。
+                                </p>
+                            </div>
+                            <div class="p-6 bg-gray-50 rounded-lg text-center">
+                                <h4 class="font-semibold text-gray-800 mb-4">Bitcoinによるリソース提供</h4>
+                                <img src="https://i.imgur.com/2sAl5gG.png" alt="Bitcoin QR Code" class="w-48 h-48 mx-auto mb-4 border-4 border-white shadow-md">
+                                <div class="mt-4">
+                                    <p class="text-sm text-gray-500 mb-1">ウォレットアドレス</p>
+                                    <div class="flex items-center justify-center bg-gray-200 p-2 rounded">
+                                        <code id="wallet-address" class="text-xs text-gray-800 break-all">18pgUEobhyK5KPsKbn42656iyREghXSYah</code>
+                                        <button id="copy-button" class="ml-2 p-1.5 bg-cyan-600 text-white rounded hover:bg-cyan-700 transition">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                        </button>
+                                    </div>
+                                    <p id="copy-feedback" class="text-xs text-green-500 mt-2 h-4"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <section id="life" class="content-section space-y-8 hidden">
                      <div class="bg-white p-8 rounded-xl shadow-lg">
                         <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-cyan-600 pb-3">信者の生活（整合学院での一日）</h2>
@@ -461,6 +549,36 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            const opening = document.getElementById('opening-animation');
+            const mainContainer = document.getElementById('main-container');
+            const openingText = document.getElementById('opening-text');
+            const phrase = "我々は信仰しない。我々は最適化する。";
+            let i = 0;
+
+            function typePhrase() {
+                if (i < phrase.length) {
+                    openingText.innerHTML += phrase.charAt(i);
+                    i++;
+                    setTimeout(typePhrase, 100);
+                } else {
+                    setTimeout(endOpening, 1500);
+                }
+            }
+
+            function endOpening() {
+                opening.style.opacity = '0';
+                mainContainer.style.opacity = '1';
+                setTimeout(() => {
+                    opening.style.display = 'none';
+                }, 800);
+            }
+
+            setTimeout(() => {
+                openingText.style.opacity = '1';
+                typePhrase();
+            }, 2500);
+
+
             const navLinks = document.querySelectorAll('.sidebar-link');
             const sections = document.querySelectorAll('.content-section');
 
@@ -612,9 +730,33 @@
                 });
             });
 
-            // Show first tab by default
             if(document.querySelector('.sub-nav-link')) {
                 showAcademiaContent('academia-policy');
+            }
+
+            // Contribution Section
+            const copyButton = document.getElementById('copy-button');
+            const copyFeedback = document.getElementById('copy-feedback');
+            const walletAddress = document.getElementById('wallet-address');
+
+            if (copyButton) {
+                copyButton.addEventListener('click', () => {
+                    const address = walletAddress.innerText;
+                    const textArea = document.createElement('textarea');
+                    textArea.value = address;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    try {
+                        document.execCommand('copy');
+                        copyFeedback.textContent = 'コピーしました！';
+                        setTimeout(() => {
+                            copyFeedback.textContent = '';
+                        }, 2000);
+                    } catch (err) {
+                        copyFeedback.textContent = 'コピーに失敗しました';
+                    }
+                    document.body.removeChild(textArea);
+                });
             }
         });
     </script>
