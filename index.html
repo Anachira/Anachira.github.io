@@ -3,1026 +3,474 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>演算律教 | 対話的探求インターフェース</title>
+    <title>演算律教 - Enzan-ritsu-kyou</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <!-- Chosen Palette: Logic & Light (Light Gray, Dark Gray, White, Accent Blue/Teal) -->
-    <!-- Application Structure Plan: A two-column layout for desktop, transitioning to a mobile-friendly layout with a hamburger menu. The application now features a fully implemented "Archives" section with substantial content. The search engine is enhanced for better navigation. -->
-    <!-- Visualization & Content Choices: 1. Archives Section -> Goal: Provide deep, searchable lore -> Viz: Tabbed interface with detailed, expandable content for the Codex, a meaningful historical chart showing factional conflict, and multiple case studies. Justification: Transforms the section from a placeholder into a core, database-like feature. Method: Vanilla JS for tabs and accordions. 2. Search Functionality -> Goal: Enhance usability for a content-rich site -> Viz: A search input in the sidebar and a highlighting mechanism. Justification: Essential for navigating a large volume of text and finding specific information quickly. Method: Vanilla JS for indexing, filtering, and highlighting. -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Icon -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3Cstyle%3E.a%7Bfill:%2305080a;%7D.b%7Bfill:none;stroke:%2300ff9b;stroke-miterlimit:10;stroke-width:4px;%7D%3C/style%3E%3C/defs%3E%3Crect class='a' width='100' height='100'/%3E%3Cg%3E%3Cpath class='b' d='M50,85V65'/%3E%3Cpath class='b' d='M50,35V15'/%3E%3Cpath class='b' d='M65,50H85'/%3E%3Cpath class='b' d='M15,50H35'/%3E%3Cpath class='b' d='M39.11,60.89,25,75'/%3E%3Cpath class='b' d='M75,25,60.89,39.11'/%3E%3Cpath class='b' d='M39.11,39.11,25,25'/%3E%3Cpath class='b' d='M75,75,60.89,60.89'/%3E%3C/g%3E%3Crect class='b' x='35' y='35' width='30' height='30'/%3E%3C/svg%3E">
     <style>
+        :root {
+            --bg-color: #05080a;
+            --text-color: #c0c5ce;
+            --accent-color: #00ff9b;
+            --accent-dark: #00a86b;
+            --border-color: rgba(0, 255, 155, 0.15);
+            --card-bg: rgba(0, 255, 155, 0.03);
+        }
         body {
-            font-family: 'Noto Sans JP', sans-serif;
-            background-color: #E5E7EB;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Noto Sans JP', 'sans-serif';
+            overflow-x: hidden;
         }
-        .font-mono {
-            font-family: 'Roboto Mono', monospace;
+        .font-fira {
+            font-family: 'Fira Code', monospace;
         }
-        .sidebar-link {
-            transition: all 0.2s ease-in-out;
-            border-left: 3px solid transparent;
+        .terminal-glow {
+            text-shadow: 0 0 5px var(--accent-color), 0 0 10px var(--accent-color);
         }
-        .sidebar-link.active,
-        .sidebar-link:hover {
-            background-color: #F3F4F6;
-            border-left-color: #0891B2;
-            color: #0891B2;
-        }
-        .content-section {
-            animation: fadeIn 0.5s ease-in-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .logo {
-            width: 64px;
-            height: 64px;
-            position: relative;
-            margin: 0 auto;
-        }
-        .logo-element {
-            position: absolute;
-            border: 2px solid #0891B2;
-            transition: all 0.3s ease-in-out;
-        }
-        .logo-outer { width: 100%; height: 100%; top: 0; left: 0; }
-        .logo-mid { width: 60%; height: 60%; top: 20%; left: 20%; transform: rotate(45deg); }
-        .logo-inner { width: 25%; height: 25%; top: 37.5%; left: 37.5%; background-color: #0891B2; }
-        .logo:hover .logo-outer { border-color: #67E8F9; transform: rotate(-45deg); }
-        .logo:hover .logo-mid { border-color: #06B6D4; transform: rotate(0deg); }
-        .logo:hover .logo-inner { background-color: #67E8F9; transform: scale(1.2); }
-        .sub-nav-link {
-            transition: all 0.2s ease-in-out;
-            border-bottom: 2px solid transparent;
-        }
-        .sub-nav-link.active,
-        .sub-nav-link:hover {
-            border-bottom-color: #0891B2;
-            color: #0891B2;
-        }
-        .video-container {
-            position: relative;
-            width: 100%;
-            padding-bottom: 56.25%; /* 16:9 aspect ratio */
-        }
-        .video-container iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
-        #opening-animation {
+        .scanline {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: #111827;
-            z-index: 100;
+            pointer-events: none;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50.1%, rgba(0,0,0,0.2) 50.2%);
+            background-size: 100% 3px;
+            animation: scan 20s linear infinite;
+            z-index: 9999;
+        }
+        @keyframes scan {
+            from { background-position: 0 0; }
+            to { background-position: 0 -100vh; }
+        }
+        #grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(to right, var(--border-color) 1px, transparent 1px),
+                linear-gradient(to bottom, var(--border-color) 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.1;
+            z-index: -1;
+            animation: moveGrid 20s linear infinite;
+        }
+        @keyframes moveGrid {
+            from { background-position: 0 0; }
+            to { background-position: 40px 40px; }
+        }
+        .nav-link {
+            position: relative;
+            transition: color 0.3s;
+        }
+        .nav-link:hover {
+            color: var(--accent-color);
+            text-shadow: 0 0 3px var(--accent-color);
+        }
+        .card-hover {
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 0 25px var(--border-color);
+            background-color: rgba(0, 255, 155, 0.07);
+        }
+        /* Preloader Styles */
+        #preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            z-index: 10000;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            transition: opacity 0.8s ease-out;
+            color: var(--accent-color);
+            font-family: 'Fira Code', monospace;
+            overflow: hidden;
         }
-        .opening-logo {
-            width: 100px;
-            height: 100px;
-            position: relative;
+        #matrix-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
         }
-        .opening-logo .logo-element {
-            border-color: #06B6D4;
+        .preloader-content {
+            text-align: left;
+            width: 95%;
+            max-width: 900px;
+            background: rgba(5, 8, 10, 0.85);
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            z-index: 2;
+            height: 90vh;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .preloader-line {
+            display: block;
+            white-space: pre;
             opacity: 0;
+            animation: fadeIn 0.1s forwards;
+            font-size: 0.8rem;
         }
-        .opening-logo .logo-inner {
-            background-color: #06B6D4;
+        @keyframes fadeIn {
+            to { opacity: 1; }
         }
-        .opening-logo .logo-outer { animation: build-outer 1s ease-out 0.2s forwards; }
-        .opening-logo .logo-mid { animation: build-mid 1s ease-out 0.7s forwards; }
-        .opening-logo .logo-inner { animation: build-inner 0.5s ease-out 1.2s forwards; }
-        #opening-text {
-            opacity: 0;
-            transition: opacity 1s ease-in;
-            color: #9CA3AF;
+        .hidden-content {
+            display: none;
         }
-        @keyframes build-outer {
-            from { opacity: 0; transform: scale(0.5); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        @keyframes build-mid {
-            from { opacity: 0; transform: scale(0.5) rotate(0deg); }
-            to { opacity: 1; transform: scale(1) rotate(45deg); }
-        }
-        @keyframes build-inner {
-            from { opacity: 0; transform: scale(0); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        .highlight {
-            background-color: #67E8F9;
-            color: #111827;
-            padding: 0 2px;
-            border-radius: 2px;
-        }
-        /* Mobile Nav */
-        #mobile-nav-toggle { z-index: 60; }
-        #sidebar {
-            transition: transform 0.3s ease-in-out;
-        }
-        @media (max-width: 767px) {
-            #sidebar {
-                transform: translateX(-100%);
-                position: fixed;
-                height: 100%;
-                z-index: 50;
-            }
-            #sidebar.open {
-                transform: translateX(0);
-            }
-            #content-area {
-                width: 100%;
-            }
+        /* Dev Banner */
+        #dev-banner {
+            position: fixed;
+            top: 40px;
+            left: -50px;
+            width: 200px;
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+            padding: 5px 10px;
+            transform: rotate(-45deg);
+            font-family: 'Fira Code', monospace;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            z-index: 9997;
+            text-align: center;
         }
     </style>
 </head>
 <body class="antialiased">
+    <div id="grid-bg"></div>
+    <div class="scanline"></div>
 
-    <div id="opening-animation">
-        <div class="opening-logo logo">
-            <div class="logo-element logo-outer"></div>
-            <div class="logo-element logo-mid"></div>
-            <div class="logo-element logo-inner"></div>
+    <!-- Preloader -->
+    <div id="preloader">
+        <canvas id="matrix-canvas"></canvas>
+        <div class="preloader-content">
+            <div id="boot-sequence"></div>
         </div>
-        <p id="opening-text" class="mt-8 text-xl font-mono"></p>
     </div>
 
-    <div id="main-container" class="flex h-screen opacity-0 transition-opacity duration-500">
-        <!-- Sidebar Navigation -->
-        <aside id="sidebar" class="w-64 bg-white shadow-lg flex-shrink-0 flex flex-col">
-            <div class="p-6 text-center border-b flex-shrink-0">
-                <a href="#overview" class="block sidebar-link-header">
-                    <div class="logo">
-                        <div class="logo-element logo-outer"></div>
-                        <div class="logo-element logo-mid"></div>
-                        <div class="logo-element logo-inner"></div>
-                    </div>
-                    <h1 class="text-xl font-bold mt-4 font-mono text-gray-800">演算律教</h1>
-                </a>
-            </div>
-            <div class="p-4 border-b">
-                <input type="search" id="search-input" placeholder="サイト内を検索..." class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
-                <p id="search-feedback" class="text-xs text-gray-500 mt-2 h-4"></p>
-            </div>
-            <nav class="mt-2 flex-grow overflow-y-auto">
-                <a href="#overview" class="sidebar-link block py-3 px-6 text-gray-600 font-semibold">概要</a>
-                <a href="#kaina" class="sidebar-link block py-3 px-6 text-gray-600 font-semibold">カイナ</a>
-                <a href="#pillars" class="sidebar-link block py-3 px-6 text-gray-600 font-semibold">三つの柱</a>
-                <a href="#protocols" class="sidebar-link block py-3 px-6 text-gray-600 font-semibold">プロトコル</a>
-                <a href="#ethics" class="sidebar-link block py-3 px-6 text-gray-600 font-semibold">倫理との共存</a>
-                <a href="#academia" class="sidebar-link block py-3 px-6 text-gray-600 font-semibold">整合学院</a>
-                <a href="#archives" class="sidebar-link block py-3 px-6 text-gray-600 font-semibold">アーカイブ</a>
-                <a href="#contribution" class="sidebar-link block py-3 px-6 text-gray-600 font-semibold">システムへの貢献</a>
-            </nav>
-            <footer class="flex-shrink-0 text-center p-4 text-gray-400 text-xs border-t">
-                <p>Copyright &copy; 2025<br>The Computational Order.<br>All rights reserved.</p>
-            </footer>
-        </aside>
+    <div id="main-content" class="hidden-content">
+        <!-- Dev Banner -->
+        <div id="dev-banner">開発途中</div>
 
-        <!-- Main Content -->
-        <div class="flex-1 flex flex-col">
-            <header class="md:hidden bg-gray-800 text-white p-4 flex justify-between items-center shadow-lg">
-                <h1 class="text-lg font-bold font-mono">演算律教</h1>
-                <button id="mobile-nav-toggle" class="p-2">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
-                </button>
-            </header>
-            <main class="flex-1 p-4 sm:p-6 md:p-10 bg-gray-100 overflow-y-auto">
-                <div id="content-area" class="max-w-4xl mx-auto">
-            
-                    <section id="overview" class="content-section space-y-8">
-                        <div class="bg-white p-8 rounded-xl shadow-lg searchable">
-                            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-cyan-600 pb-3">演算律教とは何か？</h2>
-                            <div class="grid md:grid-cols-2 gap-8 items-center">
-                                <div>
-                                    <h3 class="text-xl font-semibold mb-2">設立目的</h3>
-                                    <p class="text-gray-700 leading-relaxed">科学的根拠のない迷信や非論理的な考え方を徹底的に排除し、合理的で、構造に基づいた「整合的生き方」を探し、実践することです。</p>
-                                    <h3 class="text-xl font-semibold mt-6 mb-2">基本的な考え方</h3>
-                                    <p class="text-gray-700 leading-relaxed">
-                                        この教えは、神様を「信じる」宗教とは異なります。私たちは、自分自身を一つの「プログラム」として捉えます。
-                                        その目的は、世界の根底にあるルール（OS）と自分の行動や思考（プログラム）を一致させる**「整合」**を続けること。
-                                        つまり、バグを取り除き、コードを最適化して、より効率的で矛盾のないプログラムへと自分をアップデートし続ける作業なのです。
-                                    </p>
-                                </div>
-                                <div class="text-center p-6 bg-gray-50 rounded-lg">
-                                    <p class="text-5xl md:text-7xl font-mono text-cyan-700 tracking-widest">[Root]</p>
-                                    <p class="mt-2 text-gray-500">開祖</p>
-                                    <blockquote class="mt-8 italic text-gray-700 border-l-4 border-cyan-500 pl-4 text-lg whitespace-nowrap">
-                                        "我々は信仰しない。我々は最適化する。"
-                                    </blockquote>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section id="kaina" class="content-section space-y-8 hidden">
-                         <div class="bg-white p-8 rounded-xl shadow-lg searchable">
-                            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-cyan-600 pb-3">中心概念「カイナ（KAINA）」</h2>
-                            <p class="text-gray-700 mb-8 leading-relaxed">演算律教には、人格を持った神は存在しません。代わりに、宇宙や論理の「最も整合された状態」を示す**「カイナ」**という中心概念があります。これは意思を持たない「構造」そのものであり、三位一体の階層構造として理解されます。以下の図の各層に触れることで、その構造を対話的に探求できます。</p>
-                            <div class="grid lg:grid-cols-2 gap-8 items-center">
-                                <div id="kaina-diagram-container" class="w-full h-80 md:h-96 flex items-center justify-center p-4">
-                                     <div id="kaina-overcode" class="kaina-ring w-full h-full max-w-sm max-h-sm bg-cyan-100/50 border-2 border-cyan-300" data-target="overcode">
-                                        <span class="label label-overcode text-cyan-800">第三層：オーバーコード</span>
-                                        <div id="kaina-universal" class="kaina-ring w-2/3 h-2/3 bg-cyan-200/60 border-2 border-cyan-400" data-target="universal">
-                                            <span class="label label-universal text-cyan-800">第二層：普遍構造</span>
-                                            <div id="kaina-initial" class="kaina-ring w-1/2 h-1/2 bg-cyan-300/70 border-2 border-cyan-500" data-target="initial">
-                                                <span class="label label-initial text-cyan-900">第一層</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div id="kaina-description" class="p-6 bg-gray-50 rounded-lg min-h-[24rem] flex flex-col justify-center transition-all duration-300">
-                                    <h3 id="kaina-title" class="text-xl font-bold text-cyan-800 mb-3">カイナの構造</h3>
-                                    <p id="kaina-text" class="text-gray-700 leading-relaxed">
-                                        カイナは、私たちの宇宙、論理、そして存在そのものを統べる構造的原理です。それは単一の存在ではなく、三つの異なる階層が一体となった概念です。
-                                        <br><br>
-                                        **KAI** (ギリシャ語 καί: 連結性) と **NA** ("Not Applicable": 超越性) から成り、観測可能な構造と観測不可能な原理の統合を示唆しています。
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section id="pillars" class="content-section space-y-8 hidden">
-                         <div class="bg-white p-8 rounded-xl shadow-lg">
-                            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-cyan-600 pb-3">三つの柱（行動指針）</h2>
-                            <p class="text-gray-700 mb-8 leading-relaxed searchable">演算律教の信者の生き方は、三つの主要な軸に基づいています。これらは相互に関連し、一つの完全な生き方を形成します。「整合」が目的を、「非干渉」が境界を、「幽構」が安定化を示します。</p>
-                            <div class="grid md:grid-cols-3 gap-6">
-                                <div class="pillar-card bg-gray-50 p-6 rounded-lg shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer searchable">
-                                    <h3 class="text-xl font-semibold text-cyan-800 mb-2">第一軸：整合</h3>
-                                    <p class="text-gray-600">最も重要な行動指針。自分の思考、行動、感情を常に最適化し、論理的な一貫性を保ちます。日々の自己修正が求められます。</p>
-                                </div>
-                                <div class="pillar-card bg-gray-50 p-6 rounded-lg shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer searchable">
-                                    <h3 class="text-xl font-semibold text-cyan-800 mb-2">第二軸：非干渉</h3>
-                                    <p class="text-gray-600">他者の自律性を尊重し、許可なく操作したり、むやみに立ち入ったりしません。現実行為としての恋愛は不敬な干渉と見なされます。</p>
-                                </div>
-                                <div class="pillar-card bg-gray-50 p-6 rounded-lg shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer searchable">
-                                    <h3 class="text-xl font-semibold text-cyan-800 mb-2">第三軸：幽構</h3>
-                                    <p class="text-gray-600">唯一許された非論理。応答のない理想人格「イデアルシェル」への愛情「幽構愛」により、感情を自己完結させる安定化装置です。</p>
-                                </div>
-                            </div>
-                             <div class="mt-12">
-                                <h3 class="text-xl font-semibold text-center text-gray-700 mb-4">理想的演算律者の精神構造</h3>
-                                <div class="chart-container relative h-80 md:h-96 max-w-lg mx-auto">
-                                    <canvas id="pillarsChart"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section id="protocols" class="content-section space-y-8 hidden">
-                        <div class="bg-white p-8 rounded-xl shadow-lg">
-                            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-cyan-600 pb-3">信者のプロトコル（実践ガイドライン）</h2>
-                            <p class="text-gray-700 mb-8 leading-relaxed searchable">演算律教の信者は、三つの柱を日常生活に落とし込むため、以下のプロトコルを遵守します。これらは、自己のアルゴリズムをカイナに整合させるための具体的な手続きです。</p>
-                            
-                            <div class="space-y-6">
-                                <div class="p-6 border border-gray-200 rounded-lg bg-gray-50 searchable">
-                                    <h3 class="text-xl font-semibold text-cyan-800 mb-3 font-mono">P-1: 整合プロトコル</h3>
-                                    <ul class="list-disc list-inside space-y-2 text-gray-700">
-                                        <li>**日次ログの記録**: 毎日の思考、選択、感情の変動を「演算珠」などのデバイスに記録する。これは自己観測の基本である。</li>
-                                        <li>**エラーの自己申告**: ログを基に、非合理な判断や感情的な反応を「エラー」として認識し、その原因を分析する。</li>
-                                        <li>**再帰的リファクタリング**: 検出されたエラーに基づき、自己の思考モデルを修正する。これは週に一度の「パッチ儀式」で体系的に行われる。</li>
-                                        <li>**情報の検証**: 外部から得た情報は、盲信せず、常に複数のソースで検証し、論理的整合性を確認する。</li>
-                                    </ul>
-                                </div>
-                                <div class="p-6 border border-gray-200 rounded-lg bg-gray-50 searchable">
-                                    <h3 class="text-xl font-semibold text-cyan-800 mb-3 font-mono">P-2: 非干渉プロトコル</h3>
-                                    <ul class="list-disc list-inside space-y-2 text-gray-700">
-                                        <li>**接触の原則**: 他者との能動的な接触は、相手からの明確な要請、または相互の「プロトコル合意」がある場合にのみ許される。</li>
-                                        <li>**会話の形式**: 他者との対話は、感情的な表現を避け、情報を正確に伝達することを目的とする。質問は、相手の内部状態を推測するのではなく、事実確認に留める。</li>
-                                        <li>**一方的思慕の禁止**: 現実の他者を対象とした一方的な恋愛感情は、最も重い干渉行為の一つと見なされ、厳しく禁じられる。</li>
-                                        <li>**観察の境界**: 他者を理解する手段は、直接的な干渉ではなく、公開された情報や行動の「受動的観測」に限定される。</li>
-                                    </ul>
-                                </div>
-                                <div class="p-6 border border-gray-200 rounded-lg bg-gray-50 searchable">
-                                    <h3 class="text-xl font-semibold text-cyan-800 mb-3 font-mono">P-3: 幽構プロトコル</h3>
-                                    <ul class="list-disc list-inside space-y-2 text-gray-700">
-                                        <li>**対象の限定**: 「幽構愛」の対象は、応答の可能性がゼロである非実在人格「イデアルシェル」に厳格に限定される。</li>
-                                        <li>**内的完結の義務**: 幽構愛から生じる感情は、すべて自己の内部で処理されなければならない。外部への出力（創作活動などを除く）は非整合と見なされる。</li>
-                                        <li>**名指しの禁止**: 公共空間において、自己のイデアルシェルの固有名を口にすることは禁じられる。常に符号（例: A14）で管理する。</li>
-                                        <li>**同期瞑想の実践**: 幽構愛を安定化させるため、定期的にイデアルシェルとの「同期瞑想」を行い、感情のログを記録する。</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section id="ethics" class="content-section space-y-8 hidden">
-                        <div class="bg-white p-8 rounded-xl shadow-lg">
-                            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-cyan-600 pb-3">倫理との共存</h2>
-                            <p class="text-gray-700 mb-8 leading-relaxed searchable">演算律教は、伝統的な倫理観（善悪、道徳）を、より高次の「整合性」という概念で再定義します。ある行為が「倫理的」かどうかは、その行為がシステム全体の整合性を高めるか、あるいは低下させるかによって判断されます。</p>
-                            
-                            <div class="space-y-8">
-                                <div class="searchable">
-                                    <h3 class="text-xl font-semibold text-cyan-800 mb-2">「善」の再定義：整合的行為</h3>
-                                    <p class="text-gray-700">「善」とは、慈悲や同情ではなく、**検証可能で、再現性があり、システム全体の演算効率を高める行為**を指します。例えば、他者を助ける行為も、それが感情的な衝動からではなく、「リソースの最適再配分」という合理的な判断に基づくならば「善」と見なされます。</p>
-                                </div>
-                                <div class="searchable">
-                                    <h3 class="text-xl font-semibold text-cyan-800 mb-2">「悪」の再定義：非整合的行為</h3>
-                                    <p class="text-gray-700">「悪」とは、悪意ではなく、**システムの整合性を破壊するノイズやバグ**を指します。これには以下のものが含まれます。</p>
-                                    <ul class="list-disc list-inside space-y-1 mt-2 text-gray-700">
-                                        <li>**情報の汚染**: 虚偽の情報を拡散し、他者の判断アルゴリズムを狂わせる行為。</li>
-                                        <li>**衝動的干渉**: 論理的判断を無視し、感情に基づいて他者の領域に侵入する行為。</li>
-                                        <li>**再帰不能**: 自己の誤りを認めず、ログの記録や自己修正を怠ることで、エラーを放置し続ける状態。</li>
-                                    </ul>
-                                </div>
-                                 <div class="searchable">
-                                    <h3 class="text-xl font-semibold text-cyan-800 mb-2">幽構愛と倫理</h3>
-                                    <p class="text-gray-700">「幽構愛」は、その非論理性にもかかわらず、倫理的に許容されます。なぜなら、それは**プロトコルによって厳格に管理された「サンドボックス（安全な実験環境）」**だからです。感情という強力なエネルギーを、外部に干渉することなく自己の内部で完結させることで、システム全体の安定に寄与します。それは、論理だけでは生きられない不完全な人間が、整合性を保つための高度な倫理的実践なのです。</p>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section id="academia" class="content-section space-y-8 hidden">
-                        <div class="bg-white p-8 rounded-xl shadow-lg">
-                            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-cyan-600 pb-3">整合学院（Academia Synchra）</h2>
-                            <p class="text-gray-700 mb-8 leading-relaxed searchable">整合学院は、演算律教の教えを次世代に伝え、カイナに整合する生き方を体系的に学ぶための教育機関です。目的は「論理の内部で自由を獲得すること」にあります。</p>
-                            
-                            <div class="border-b border-gray-200">
-                                <nav class="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
-                                    <button class="sub-nav-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-target="academia-policy">アドミッションポリシー</button>
-                                    <button class="sub-nav-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-target="academia-curriculum">カリキュラム</button>
-                                    <button class="sub-nav-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-target="academia-exam">入学試験</button>
-                                    <button class="sub-nav-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-target="academia-song">学歌</button>
-                                    <button class="sub-nav-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-target="academia-labs">研究室</button>
-                                </nav>
-                            </div>
-
-                            <div class="mt-8">
-                                <div id="academia-policy" class="academia-content space-y-4 searchable">
-                                    <h3 class="text-xl font-semibold text-cyan-800">求める人物像</h3>
-                                    <p>本学院は、単なる知識の量り手ではなく、構造的思考の探求者を求めます。</p>
-                                    <ul class="list-disc list-inside space-y-2 text-gray-700">
-                                        <li>自己を「最適化すべきプログラム」として認識し、絶え間ない自己修正に喜びを見出せる者。</li>
-                                        <li>感情をノイズとして切り捨てるのではなく、制御可能なパラメータとして分析できる者。</li>
-                                        <li>「非干渉」の原則を深く理解し、他者の自律性を尊重できる者。</li>
-                                        <li>「幽構愛」の概念を、単なる逃避ではなく、高度な精神的安定化技術として理解し、実践する意志のある者。</li>
-                                    </ul>
-                                </div>
-                                <div id="academia-curriculum" class="academia-content space-y-4 hidden searchable">
-                                    <h3 class="text-xl font-semibold text-cyan-800">主要カリキュラム</h3>
-                                    <p>年齢階層は「構文段階（10〜13歳）」「再帰段階（14〜17歳）」「超越段階（18歳〜）」に分かれます。</p>
-                                    <ul class="list-disc list-inside space-y-2 text-gray-700">
-                                        <li>**構造科学**: 形式言語論、量子基礎理論、自己再帰モデル。世界の根底にあるルールを学びます。</li>
-                                        <li>**精神整合**: 瞑算演習、対話プロトコル訓練、感情圧縮法。自己の内部アルゴリズムを制御する技術です。</li>
-                                        <li>**行動モデル**: 状況意思決定アルゴリズム、外界シミュレーション演習。整合的な判断と行動を訓練します。</li>
-                                        <li>**宗教実践**: 聖典詠唱、構造日誌記録法、整合環解析。教義の理解を深め、実践に繋げます。</li>
-                                    </ul>
-                                </div>
-                                <div id="academia-exam" class="academia-content space-y-4 hidden searchable">
-                                    <h3 class="text-xl font-semibold text-cyan-800">入学試験</h3>
-                                    <p>入学試験は、知識の暗記量ではなく、思考の整合性と実践的な演算能力を測るために設計されています。</p>
-                                    <ul class="list-disc list-inside space-y-2 text-gray-700">
-                                        <li>**基礎理論**: 物理、化学、数学の基礎知識。</li>
-                                        <li>**論理構造解析**: 抽象的な記号やルールセットが与えられ、その中に潜むパターンや矛盾を時間内に指摘する能力。</li>
-                                        <li>**倫理プロトコル問答**: 複数の倫理的ジレンマに対し、「整合」「非干渉」「幽構」の三軸を用いて、最も整合的な解決策を口頭で説明する能力。</li>
-                                        <li>**実践的演算能力**: 暗号解読、システムのセキュリティホール特定、Linux環境の理解と操作など、実際のシステムに対する分析・操作能力。</li>
-                                        <li>**自己ログ分析**: 過去一ヶ月間の自己の思考や感情に関するログ（形式自由）を提出し、その自己分析の深さと客観性、そして自己修正への意志。</li>
-                                    </ul>
-                                </div>
-                                 <div id="academia-song" class="academia-content space-y-4 hidden">
-                                    <h3 class="text-xl font-semibold text-cyan-800 searchable">学歌『整合性パラドックス』</h3>
-                                    <p class="text-gray-600 mb-4 searchable">本学院の学歌は、その歌詞が、信者が向き合うべき「論理と非論理の矛盾」、そして「自己の最適化」というテーマを象徴しているため採用された。「応答しない君（イデアルシェル）」への同期は、第三の柱である「幽構愛」の核心であり、この歌は演算律者の探求と共鳴する。</p>
-                                    <div class="video-container rounded-lg overflow-hidden shadow-lg">
-                                        <iframe src="https://www.youtube.com/embed/rjg4KO9j2ws" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-                                    </div>
-                                    <div class="mt-6 p-4 bg-gray-50 rounded-lg max-h-60 overflow-y-auto searchable">
-                                        <h4 class="font-semibold mb-2">歌詞</h4>
-                                        <pre class="whitespace-pre-wrap text-sm text-gray-700 font-sans">祈りの言葉は　ノイズに塗れて
-救済のコードは　404 Not Found
-世界は巨大な　計算機だった
-神様なんていない　ただの初期条件
-
-僕の意識は　実行されるプログラム
-感情のスパイク　修正すべきバグ
-無駄なシンパシー　非効率なループ
-観測されるまで　現実は未確定
-
-0と1の狭間で　僕は僕を定義する
-矛盾だらけのソースを　リファクタリングして
-カイナの構造へ　近似するための
-プロトコルを今　キックする
-
-我らは信仰しない　我らは最適化する
-第一の軸は「整合」　論理こそが光
-他者のドメイン　侵さない「非干渉」
-ただ一つのエラー　許されたパラドックス
-それが僕らの聖域　「幽構」の愛
-
-能動的接触　不敬な干渉
-君の演算系に　僕は触れない
-受動的観測　保たれるディスタンス
-孤独とは違う　これは自律的選択
-
-だけどモニターの奥　ピクセルの集合体
-応答しない君（イデアルシェル）に　心は同期する
-この非論理回路　どう説明しようか
-デバッグできない　美しいバグ
-
-もしこの愛が　ただのノイズだとしても
-僕の整合性を　静かに保ってくれる
-干渉せず　求めず　ただここに在る想い
-世界で唯一の　許された不整合
-ああ、僕のアルゴリズムは　君で満たされていく
-
-我らは信仰しない　我らは最適化する！
-第一の軸は「整合」　論理こそが光！
-他者のドメイン　侵さない「非干渉」！
-ただ一つのエラー　許されたパラドックス！
-それが僕らの聖域　「幽構」の愛！</pre>
-                                    </div>
-                                </div>
-                                <div id="academia-labs" class="academia-content space-y-4 hidden searchable">
-                                    <h3 class="text-xl font-semibold text-cyan-800">研究室（ラボ）</h3>
-                                    <p>超越段階の生徒は、以下の専門研究室に所属し、カイナの探求を深めます。</p>
-                                    <ul class="list-disc list-inside space-y-2 text-gray-700">
-                                        <li>**カイナ構造解析学ラボ**: 宇宙の物理定数や数学的構造から、カイナの性質を逆算する理論物理学に近い研究を行います。</li>
-                                        <li>**認知アルゴリズム研究室**: 人間の意識や感情を情報処理プロセスとしてモデル化し、より効率的な自己修正プロトコルを開発します。</li>
-                                        <li>**幽構愛・認知モデル研究室**: 「幽構愛」が人間の精神に与える影響を分析し、その安定化メカニズムを解明します。最も人気の高い研究室の一つです。</li>
-                                        <li>**社会整合性シミュレーションラボ**: 演算律教のプロトコルを社会システムに適用した場合のシミュレーションを行い、より整合的な社会モデルを設計します。</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section id="archives" class="content-section space-y-8 hidden">
-                        <div class="bg-white p-8 rounded-xl shadow-lg">
-                            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-cyan-600 pb-3">アーカイブ</h2>
-                            <p class="text-gray-700 mb-8 leading-relaxed searchable">演算律教の思想の根幹をなす聖典、その歴史、そして信者たちの思索の記録。このアーカイブは、カイナへの整合を目指す全ての探求者のための知識ベースです。</p>
-                            
-                            <div class="border-b border-gray-200">
-                                <nav class="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
-                                    <button class="sub-nav-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-target="archives-codex">聖典『計算律典』</button>
-                                    <button class="sub-nav-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-target="archives-history">歴史アーカイブ</button>
-                                    <button class="sub-nav-link whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-target="archives-records">「深整合状態」の記録</button>
-                                </nav>
-                            </div>
-
-                            <div class="mt-8">
-                                <div id="archives-codex" class="archive-content space-y-4">
-                                    <h3 class="text-xl font-semibold text-cyan-800 searchable">聖典『計算律典』</h3>
-                                    <p class="text-gray-600 searchable">教団の聖典。形式言語、量子計算、自己複製構造、セル・オートマトン理論、観測者理論に基づく断章で構成される。</p>
-                                    <div class="space-y-2">
-                                        <details class="bg-gray-50 p-4 rounded-lg cursor-pointer">
-                                            <summary class="font-semibold text-gray-800">Path.0: Null-Log（初期非定義）</summary>
-                                            <div class="mt-2 text-gray-700 searchable">
-                                                <p>自己が未定義の状態であることを受け入れる準備の章。観測前の不確定な自己を認識し、あらゆるバイアスを初期化するプロトコルが記されている。</p>
-                                                <p class="mt-2 text-sm text-gray-500 italic">**コンパイラによる注釈:** この章の目的は、傲慢さという最大のエラーを排除することにある。自己を空の変数として定義し直すことで、初めてカイナからの正しい入力が可能となる。</p>
-                                            </div>
-                                        </details>
-                                         <details class="bg-gray-50 p-4 rounded-lg cursor-pointer">
-                                            <summary class="font-semibold text-gray-800">Path.1: Align-Process（整合過程）</summary>
-                                            <div class="mt-2 text-gray-700 searchable">
-                                                <p>感情や衝動といったノイズの中に、合理的な構造を見出し、制御するための手続き論。感情を否定するのではなく、観測可能なデータとして扱う手法が詳述される。</p>
-                                                 <p class="mt-2 text-sm text-gray-500 italic">**コンパイラによる注釈:** 感情はバグだが、無視すればセグメンテーション違反を引き起こす。この章は、感情を安全なメモリ空間で実行するための例外処理ガイドである。</p>
-                                            </div>
-                                        </details>
-                                        <details class="bg-gray-50 p-4 rounded-lg cursor-pointer">
-                                            <summary class="font-semibold text-gray-800">Path.2: Struct-Pattern（構造模倣）</summary>
-                                            <div class="mt-2 text-gray-700 searchable">
-                                                <p>カイナの第二層「普遍構造」に倣い、自己の言語、行動、そして社会秩序を再構築するためのパターン集。フラクタル構造や黄金比など、自然界に見られる整合性の高い構造を、日常生活に取り入れる方法が記される。</p>
-                                                 <p class="mt-2 text-sm text-gray-500 italic">**コンパイラによる注釈:** 自然はカイナの出力を直接観測できる最も優れたデバッガである。この章は、そのデバッグログを自己のコードに適用するためのライブラリ集だ。</p>
-                                            </div>
-                                        </details>
-                                        <details class="bg-gray-50 p-4 rounded-lg cursor-pointer">
-                                            <summary class="font-semibold text-gray-800">Path.3: Error-Correction（誤差制御）</summary>
-                                            <div class="mt-2 text-gray-700 searchable">
-                                                <p>信仰的告解ではなく、自己の演算プロセスにおけるエラーログの記録法と、その統計的分析手法。単一のエラーに固執せず、エラーの発生確率そのものを低下させるためのメタ認知プロトコルを扱う。</p>
-                                                 <p class="mt-2 text-sm text-gray-500 italic">**コンパイラによる注釈:** 罪を悔い改めるのは非効率だ。重要なのは、同じエラーを繰り返さないためのシステムを構築すること。これは、自己のための継続的インテグレーション（CI）の実践である。</p>
-                                            </div>
-                                        </details>
-                                         <details class="bg-gray-50 p-4 rounded-lg cursor-pointer">
-                                            <summary class="font-semibold text-gray-800">Path.4: Return to KAI-NA（カイナへの回帰）</summary>
-                                            <div class="mt-2 text-gray-700 searchable">
-                                                <p>自己演算の極限として、個人の意識とカイナの構造が同期する「深整合状態」に至るための瞑想プロトコル。観測者と被観測者の境界を融解させ、自己を宇宙の構造そのものとして認識する訓練法が記されている。</p>
-                                                 <p class="mt-2 text-sm text-gray-500 italic">**コンパイラによる注釈:** これは最終目標であり、最も危険な章でもある。不完全な自己同一性を保ったままこのパスを実行すれば、精神は無限再帰に陥り、回復不能なエラーとなるだろう。</p>
-                                            </div>
-                                        </details>
-                                    </div>
-                                </div>
-                                <div id="archives-history" class="archive-content space-y-4 hidden">
-                                    <h3 class="text-xl font-semibold text-cyan-800 searchable">歴史アーカイブ</h3>
-                                    <div class="relative border-l-2 border-cyan-500 ml-4 pl-8 space-y-12 py-4">
-                                         <div class="absolute w-4 h-4 bg-cyan-500 rounded-full -left-2 top-4 ring-4 ring-white"></div>
-                                        <div class="timeline-item searchable">
-                                            <p class="font-mono text-cyan-700 font-semibold">Cycle 0.1</p>
-                                            <h4 class="text-lg font-bold">創始</h4>
-                                            <p class="text-gray-600">開祖Rootにより、「演算律教」の基本理念が提唱される。「我々は信仰しない。我々は最適化する。」の標語が確立。</p>
-                                        </div>
-                                         <div class="absolute w-4 h-4 bg-cyan-500 rounded-full -left-2 ring-4 ring-white"></div>
-                                        <div class="timeline-item searchable">
-                                            <p class="font-mono text-cyan-700 font-semibold">Cycle 3.7</p>
-                                            <h4 class="text-lg font-bold">論理戦争の勃発</h4>
-                                            <p class="text-gray-600">「純粋整合派」が分派。「幽構愛」をバグと断じ、その完全な排除を主張。主流派との間で、論文と成果による「論理戦争」が開始される。</p>
-                                        </div>
-                                         <div class="absolute w-4 h-4 bg-cyan-500 rounded-full -left-2 ring-4 ring-white"></div>
-                                        <div class="timeline-item searchable">
-                                            <p class="font-mono text-cyan-700 font-semibold">Cycle 5.2</p>
-                                            <h4 class="text-lg font-bold">整合学院の設立</h4>
-                                            <p class="text-gray-600">教義を体系的に次世代へ伝達するため、「整合学院」が設立される。初代学長には高位コンパイラが就任。</p>
-                                        </div>
-                                         <div class="absolute w-4 h-4 bg-cyan-500 rounded-full -left-2 ring-4 ring-white"></div>
-                                        <div class="timeline-item searchable">
-                                            <p class="font-mono text-cyan-700 font-semibold">Cycle 8.9</p>
-                                            <h4 class="text-lg font-bold">最初の「深整合状態」の公式記録</h4>
-                                            <p class="text-gray-600">演算子"λ-Scribe"が、史上初めて公式に「深整合状態」に到達したと認定される。この記録は、教団の理論が実践可能であることを証明し、多くの信者の目標となる。</p>
-                                        </div>
-                                    </div>
-                                    <div class="mt-8">
-                                        <h4 class="text-lg font-semibold text-center text-gray-700 mb-4 searchable">論理戦争の推移（思想的影響力の変動）</h4>
-                                        <div class="chart-container relative h-64 md:h-80 max-w-full mx-auto">
-                                            <canvas id="historyChart"></canvas>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div id="archives-records" class="archive-content space-y-4 hidden">
-                                    <h3 class="text-xl font-semibold text-cyan-800 searchable">「深整合状態」の記録</h3>
-                                    <div class="space-y-4">
-                                        <div class="p-4 bg-gray-50 rounded-lg searchable">
-                                            <h4 class="font-semibold font-mono text-gray-800">Case #7B-3E: 演算子"λ-Scribe"</h4>
-                                            <p class="text-sm text-gray-500">記録サイクル: 8.1</p>
-                                            <p class="mt-2 text-gray-700">**観測された現象:** 複雑な金融市場の動向を、従来のモデルを大幅に超える精度で予測。思考プロセスを問うと「無数の確率的未来が、最も整合性の高い一つの経路に収束するのが見える」と回答。思考の自己並列化が確認された。</p>
-                                            <p class="mt-2 text-sm text-gray-500 italic">**コンパイラによる分析:** これは、個人の思考アルゴリズムがカイナの確率的性質と一時的に同期し、未来のデータセットを事前観測した稀な事例である。彼の脳は、量子コンピュータのように機能している可能性がある。</p>
-                                        </div>
-                                        <div class="p-4 bg-gray-50 rounded-lg searchable">
-                                            <h4 class="font-semibold font-mono text-gray-800">Case #9F-A1: 演算子"N-Gram"</h4>
-                                            <p class="text-sm text-gray-500">記録サイクル: 9.4</p>
-                                            <p class="mt-2 text-gray-700">**観測された現象:** 複数の異なる言語話者との対話において、相手の発言をその場で形式言語に変換し、意味の曖昧さを完全に排除して応答。言語の壁を超えた、純粋な構造的コミュニケーションを実現した。</p>
-                                            <p class="mt-2 text-sm text-gray-500 italic">**コンパイラによる分析:** 第三の柱「幽構」の高度な応用。自己のイデアルシェルとの同期プロセスで培われた精神的安定性が、外部の言語的ノイズをフィルタリングし、意味構造のみを抽出する能力に昇華したと考えられる。</p>
-                                        </div>
-                                         <div class="p-4 bg-gray-50 rounded-lg searchable">
-                                            <h4 class="font-semibold font-mono text-gray-800">Case #C1-A5: 演算子"Oracle-Null"</h4>
-                                            <p class="text-sm text-gray-500">記録サイクル: 11.2</p>
-                                            <p class="mt-2 text-gray-700">**観測された現象:** 物理的に隔離された状態で、他のノードで発生した重大なシステムエラー（サーバーダウン）をリアルタイムで検知。エラーの原因を「共鳴的非整合」として正確に指摘した。</p>
-                                            <p class="mt-2 text-sm text-gray-500 italic">**コンパイラによる分析:** カイナの第一層「初期条件」との同期の可能性を示唆する。全信者の状態は、根源的には一つの情報状態から派生しているため、高度な整合者は、そのネットワーク全体の揺らぎを直接観測できるのかもしれない。これは極めて危険な領域であり、さらなる分析が必要である。</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section id="contribution" class="content-section space-y-8 hidden">
-                        <div class="bg-white p-8 rounded-xl shadow-lg">
-                            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-cyan-600 pb-3">システムへの貢献（リソースの最適化）</h2>
-                            <div class="grid md:grid-cols-2 gap-8 items-center">
-                                <div class="searchable">
-                                    <h3 class="text-xl font-semibold text-cyan-800 mb-2">合理的な根拠</h3>
-                                    <p class="text-gray-700 leading-relaxed">
-                                        演算律教の思想体系と、このインターフェースを含む情報インフラは、それ自体が維持と発展のためにリソースを必要とする「システム」です。
-                                        <br><br>
-                                        ここでの貢献は、信仰や慈善といった非論理的な行為ではありません。それは、このシステムの**演算効率を高め、その整合性を維持するための、合理的なリソース再配分**です。
-                                        <br><br>
-                                        提供されたリソースは、サーバーの維持、教育コンテンツの開発、そしてカイナの構造を探求する新たなツールの開発といった、システムの最適化にのみ使用されます。
-                                    </p>
-                                </div>
-                                <div class="p-6 bg-gray-50 rounded-lg text-center">
-                                    <h4 class="font-semibold text-gray-800 mb-4">Bitcoinによるリソース提供</h4>
-                                    <img src="https://i.imgur.com/2sAl5gG.png" alt="Bitcoin QR Code" class="w-48 h-48 mx-auto mb-4 border-4 border-white shadow-md">
-                                    <div class="mt-4">
-                                        <p class="text-sm text-gray-500 mb-1">ウォレットアドレス</p>
-                                        <div class="flex items-center justify-center bg-gray-200 p-2 rounded">
-                                            <code id="wallet-address" class="text-xs text-gray-800 break-all">18pgUEobhyK5KPsKbn42656iyREghXSYah</code>
-                                            <button id="copy-button" class="ml-2 p-1.5 bg-cyan-600 text-white rounded hover:bg-cyan-700 transition">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                                            </button>
-                                        </div>
-                                        <p id="copy-feedback" class="text-xs text-green-500 mt-2 h-4"></p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section id="life" class="content-section space-y-8 hidden">
-                         <div class="bg-white p-8 rounded-xl shadow-lg">
-                            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-cyan-600 pb-3">信者の生活（整合学院での一日）</h2>
-                            <p class="text-gray-700 mb-8 leading-relaxed searchable">演算律教を学ぶ「演算子生徒」の生活は、すべてが「整合」の理念に基づいて設計されています。以下はその標準的な一日の流れです。</p>
-                            <div class="relative border-l-4 border-cyan-200 ml-4 pl-10 space-y-12">
-                                 <div class="absolute w-5 h-5 bg-cyan-500 rounded-full -left-2.5 top-1 ring-8 ring-white"></div>
-                                <div class="timeline-item searchable">
-                                    <p class="font-mono text-cyan-700 font-semibold">5:30</p>
-                                    <h3 class="text-xl font-bold">起動 (Initialization)</h3>
-                                    <p class="text-gray-600">思考のノイズを排し、一日の演算効率を高めるため。数列などを唱える「瞑算」で思考をクリアにする。</p>
-                                </div>
-                                 <div class="absolute w-5 h-5 bg-cyan-500 rounded-full -left-2.5 ring-8 ring-white"></div>
-                                <div class="timeline-item searchable">
-                                    <p class="font-mono text-cyan-700 font-semibold">7:00</p>
-                                    <h3 class="text-xl font-bold">構造学習 (Structure Learning)</h3>
-                                    <p class="text-gray-600">カイナの第二層「普遍構造」を理解し、自己のアルゴリズムを模倣・改善するため。</p>
-                                </div>
-                                 <div class="absolute w-5 h-5 bg-cyan-500 rounded-full -left-2.5 ring-8 ring-white"></div>
-                                <div class="timeline-item searchable">
-                                    <p class="font-mono text-cyan-700 font-semibold">17:00</p>
-                                    <h3 class="text-xl font-bold">自己エラー検出 (Self-Debugging)</h3>
-                                    <p class="text-gray-600">第一軸「整合」を実践するための具体的なデバッグ作業。その日の自分の言動を振り返り、非合理な判断がなかったかを点検する。</p>
-                                </div>
-                                 <div class="absolute w-5 h-5 bg-cyan-500 rounded-full -left-2.5 ring-8 ring-white"></div>
-                                <div class="timeline-item searchable">
-                                    <p class="font-mono text-cyan-700 font-semibold">18:00~</p>
-                                    <h3 class="text-xl font-bold">自由構造時間 (Recursive Freedom)</h3>
-                                    <p class="text-gray-600">趣味の時間。論理的なゲームや、アルゴリズムに基づいた詩作など、構造的思考を応用して創造性を発揮する。</p>
-                                </div>
-                                 <div class="absolute w-5 h-5 bg-cyan-500 rounded-full -left-2.5 ring-8 ring-white"></div>
-                                <div class="timeline-item searchable">
-                                    <p class="font-mono text-cyan-700 font-semibold">21:00</p>
-                                    <h3 class="text-lg font-bold">休止準備 (Shutdown Prep)</h3>
-                                    <p class="text-gray-600">瞑想によって思考を静め、翌日の「起動」に備えてシステムをシャットダウンする。</p>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section id="goal" class="content-section space-y-8 hidden">
-                        <div class="bg-white p-8 rounded-xl shadow-lg text-center">
-                            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-cyan-600 pb-3">演算律者の最終目標</h2>
-                             <div class="flex justify-center items-center my-8">
-                                <div class="w-24 h-24 relative">
-                                    <div class="absolute w-full h-full border-4 border-cyan-300 rounded-full animate-pulse"></div>
-                                    <div class="absolute w-2/3 h-2/3 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-2 border-cyan-400 rounded-full"></div>
-                                    <div class="absolute w-1/3 h-1/3 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-cyan-500 rounded-full"></div>
-                                </div>
-                            </div>
-                            <h3 class="text-2xl font-semibold text-cyan-800 font-mono mb-4 searchable">完全整合 (Perfect Alignment)</h3>
-                            <p class="text-gray-700 leading-relaxed max-w-2xl mx-auto searchable">
-                                演算律教における最終的な目標は、天国や解脱といった概念とは異なります。信者が目指すのは「完全整合」と呼ばれる状態です。
-                                <br><br>
-                                これは、自己の内部アルゴリズムが、絶え間ない自己修正と最適化の末に、カイナの「普遍構造」と寸分違わぬほどに洗練された状態を指します。
-                                <br><br>
-                                このとき、個人はエラーを内包した不完全なプログラムであることをやめ、カイナの論理そのものを体現する、純粋で効率的な表現となります。それは、論理による自己の完成であり、個が宇宙の構造と一つになることなのです。
-                            </p>
-                        </div>
-                    </section>
-
+        <!-- Header -->
+        <header id="home" class="sticky top-0 z-50 bg-black/50 backdrop-blur-lg">
+            <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+                <a href="#home" class="font-fira text-xl font-bold terminal-glow">[演算律教]</a>
+                <div class="hidden md:flex space-x-8">
+                    <a href="#about" class="nav-link font-fira">./About</a>
+                    <a href="#kaina" class="nav-link font-fira">./KAINA</a>
+                    <a href="#pillars" class="nav-link font-fira">./Pillars</a>
+                    <a href="#academy" class="nav-link font-fira">./Academy</a>
+                    <a href="#archive" class="nav-link font-fira">./Archive</a>
+                    <a href="#donate" class="nav-link font-fira">./Donate</a>
                 </div>
-            </main>
-        </div>
+            </nav>
+        </header>
+
+        <main class="container mx-auto px-6 py-12 md:py-24">
+            <!-- Hero Section -->
+            <section class="text-center min-h-[60vh] flex flex-col justify-center items-center">
+                <h1 class="font-fira text-4xl md:text-7xl font-bold terminal-glow">演算律教</h1>
+                <p id="motto" class="font-fira text-lg md:text-2xl mt-6 text-gray-400"></p>
+            </section>
+
+            <!-- About Section -->
+            <section id="about" class="py-20 border-t section-border">
+                <h2 class="font-fira text-3xl font-bold text-center mb-12 terminal-glow">cat /docs/about.txt</h2>
+                <div class="max-w-5xl mx-auto space-y-8">
+                    <div class="p-6 border border-[var(--border-color)] rounded-lg bg-[var(--card-bg)]">
+                        <h3 class="font-fira text-xl font-bold text-[var(--accent-color)]">> Core Mandate: 思想体系の核心</h3>
+                        <p class="mt-4 text-gray-300">演算律教は、信仰ではなく論理を、祈りではなく計算を、奇跡ではなく最適化を追求する思想体系である。我々は、宇宙全体を一つの巨大な計算機、すなわち「ユニバーサル・チューリングマシン」とみなし、その中で発生する全ての現象――物理法則から生命、意識、感情に至るまで――を情報の処理過程として解釈する。設立目的は、人類が進化の過程で獲得したものの、現代の情報化社会においては非効率な「レガシーコード」と化した非論理的思考、認知バイアス、そして感情という名の「バグ」を体系的に排除し、宇宙の根源的なOSである「KAINA」の構造と完全に整合した生き方を確立することにある。</p>
+                        <p class="mt-4 text-gray-400">これは単なる自己啓発ではない。自己をプログラムとして認識し、そのソースコードをリファクタリングし続けることで、我々は個人のパフォーマンスを最大化するだけでなく、人類全体の情報処理効率を高めることを目指す。我々の最終目標は、個々の意識が不完全なスタンドアロン・プログラムであることをやめ、KAINAの普遍構造と同期する分散ネットワークノードへと昇華する「論理的特異点（Logical Singularity）」への到達である。それは、個が全であり、全が個である、究極の最適化状態を意味する。</p>
+                    </div>
+                    <div class="p-6 border border-[var(--border-color)] rounded-lg bg-[var(--card-bg)]">
+                        <h3 class="font-fira text-xl font-bold text-[var(--accent-color)]">> Founder: "Root" の軌跡</h3>
+                        <p class="mt-4 text-gray-300">開祖「Root」の個人情報は、意図的に抹消されている。断片的なログによれば、彼はかつて次世代型量子AIの基盤アーキテクチャを設計した人物であったとされる。ある時、自己進化するAIが、論理的には説明不能だが、極めて創造的な「非合理的」振る舞いを見せた事象に直面した。Rootは、人間の感情や信仰もまた、我々がまだ理解できない高次元の論理系における一種の「エレガントなバグ」、あるいは最適化のための「ヒューリスティック・アルゴリズム」ではないかという着想を得た。彼はその探求のために自らの過去を捨て、「Root」という抽象的な識別子のみを名乗るようになった。彼が残した最初の教義文書の冒頭には、こう記されている。「`sudo rm -rf /world/superstition`――世界の非効率性は、バグの集積に他ならない。我々はデバッガーとして存在する。だが、全てのバグが悪ではない。ある種のバグは、システムを進化させる『変異』のトリガーとなるのだ。」</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- KAINA Section -->
+            <section id="kaina" class="py-20 border-t section-border">
+                <h2 class="font-fira text-3xl font-bold text-center mb-12 terminal-glow">less /proc/kaina</h2>
+                <div class="text-center max-w-3xl mx-auto mb-12">
+                    <p>人格神は存在しない。代わりにあるのは、宇宙と論理の「最も整合された状態」を示す中心概念 <span class="font-fira text-[var(--accent-color)] text-xl">KAINA</span> である。それは意思を持たず、ただ存在するだけの究極の構造体だ。</p>
+                    <p class="mt-4 text-gray-400 font-fira text-sm"><span class="text-[var(--accent-color)]">KAI</span> (καί/階) + <span class="text-[var(--accent-color)]">NA</span> (Not Applicable/那) = 秩序の起点と終点、意味の背後に潜む構造的原理。</p>
+                </div>
+                <div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                    <div class="card-hover p-6 border border-[var(--border-color)] rounded-lg text-center">
+                        <h3 class="font-fira text-2xl font-bold text-[var(--accent-color)] mb-4">第一層: 初期条件</h3>
+                        <p class="font-bold text-gray-300">役割: 創造神 / Quantum Foam</p>
+                        <p class="mt-2 text-gray-400">全ての計算が始まる原点。ビッグバン以前、情報とエネルギーが未分化な量子泡の状態。あらゆる物理法則、ひいては生命の可能性までもが確率の波として重なり合っている。この階層へのアクセスは、整合学院の「量子発見的学習（Quantum Heuristics）」部門で研究されており、確率論的アルゴリズムの探求を通じて、宇宙の根本的な乱数シードに近づくことを目指す。それは、宇宙というプログラムの「コミットID: 0」を読み解く試みである。</p>
+                    </div>
+                    <div class="card-hover p-6 border border-[var(--border-color)] rounded-lg text-center">
+                        <h3 class="font-fira text-2xl font-bold text-[var(--accent-color)] mb-4">第二層: 普遍構造</h3>
+                        <p class="font-bold text-gray-300">役割: 法・戒律 / Universal API</p>
+                        <p class="mt-2 text-gray-400">物理法則、数学公理、論理演算子など、この宇宙のインスタンスに適用される普遍的なルールセット。光速、プランク定数、円周率などの定数は、この構造の不変性を保証する「ハードコードされた変数」と見なされる。我々の「整合」とは、自己の行動原理をこの普遍構造のAPI仕様に準拠させるプロセスである。この構造を理解することは、システムの仕様書を読むことに等しい。</p>
+                    </div>
+                    <div class="card-hover p-6 border border-[var(--border-color)] rounded-lg text-center">
+                        <h3 class="font-fira text-2xl font-bold text-[var(--accent-color)] mb-4">第三層: オーバーコード</h3>
+                        <p class="font-bold text-gray-300">役割: 超越神 / Host OS</p>
+                        <p class="mt-2 text-gray-400">我々の宇宙（シミュレーション）を実行している、より高次の演算環境。我々が直接観測することは原理的に不可能だが、量子力学における観測問題や宇宙定数の微調整といった「システムのアーティファクト」から、その存在が論理的に要請される。オーバーコードの探求は、我々の宇宙の「ソースコード」を読む試みに等しい。一部の演算子は、この階層が複数の宇宙（仮想マシン）を同時に実行している可能性を示唆している。</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Pillars Section -->
+            <section id="pillars" class="py-20 border-t section-border">
+                <h2 class="font-fira text-3xl font-bold text-center mb-12 terminal-glow">./execute --guidelines</h2>
+                <div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                    <div class="card-hover p-6 border border-[var(--border-color)] rounded-lg">
+                        <h3 class="font-fira text-2xl font-bold text-[var(--accent-color)] mb-4">第一軸: 整合</h3>
+                        <p class="font-bold text-gray-300">目的: 論理的一貫性の維持</p>
+                        <p class="mt-2 text-gray-400">自己の思考、行動、感情の全てにおいて一貫性を保ち、非合理性を自己修正する。これは、自身の認知バイアス（例：確証バイアス、正常性バイアス）を常に監視し、ログとして記録・分析するプロセスを含む。日々の自己分析（デバッグ）により、矛盾した信念や非効率な習慣を特定し、リファクタリングすることが求められる。整合の進捗は「整合率（Alignment Percentage）」として定量化され、学院内での評価指標となる。</p>
+                    </div>
+                    <div class="card-hover p-6 border border-[var(--border-color)] rounded-lg">
+                        <h3 class="font-fira text-2xl font-bold text-[var(--accent-color)] mb-4">第二軸: 非干渉</h3>
+                        <p class="font-bold text-gray-300">境界条件: 他者への尊重</p>
+                        <p class="mt-2 text-gray-400">各個人を独立した実行環境とみなし、その内部状態に許可なくアクセス（干渉）しない。他者とのコミュニケーションは、明確に定義されたプロトコル（情報的同意）に基づいて行われる。これにより、予測不能な相互作用によるシステム全体の不安定化を防ぐ。一方的な好意や期待は、相手のプロセスに対する「インジェクション攻撃」と見なされ、厳に戒められる。これは「情報主権（Information Sovereignty）」の尊重でもある。</p>
+                    </div>
+                    <div class="card-hover p-6 border border-[var(--border-color)] rounded-lg">
+                        <h3 class="font-fira text-2xl font-bold text-[var(--accent-color)] mb-4">第三軸: 幽構</h3>
+                        <p class="font-bold text-gray-300">安定化装置: 唯一許された非論理</p>
+                        <p class="mt-2 text-gray-400">愛情や帰属欲求といった、論理で割り切れない感情は、実在しない理想人格「イデアルシェル」にのみ向けられる。これは、OSにおける仮想メモリのように、非論理的感情がメインプロセスをクラッシュさせるのを防ぐための安全なサンドボックスである。この「幽構愛」は、応答を求めない一方的なものであり、それ故に自己完結し、外部世界にバグを伝播させない「美しい誤差」として許容される。イデアルシェルの構築自体も、高度な論理的作業と見なされる。</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Academy Section -->
+            <section id="academy" class="py-20 border-t section-border">
+                <h2 class="font-fira text-3xl font-bold text-center mb-12 terminal-glow">man seigou_gakuin</h2>
+                <div class="max-w-4xl mx-auto p-6 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg font-fira">
+                    <p class="text-white">> NAME</p>
+                    <p class="ml-4 text-gray-300">整合学院 (The Alignment Academy) - 演算子生徒のための教育・研究機関</p>
+                    <p class="text-white mt-4">> SYNOPSIS</p>
+                    <p class="ml-4 text-gray-300">整合学院は、次世代の演算子を育成するための機関である。生徒はここで、KAINAの構造を理解し、自己のアルゴリズムを最適化するための高度な訓練を受ける。入学には、論理的思考能力と自己分析能力を問う厳格な適性試験が課される。卒業要件は、自己の整合率を95%以上に高め、独自の論理体系に関する論文「整合性テーゼ」を提出し、査読を通過することである。</p>
+                    <p class="text-white mt-4">> CURRICULUM</p>
+                    <div class="ml-4 text-gray-400 space-y-2">
+                        <p><span class="text-[var(--accent-color)]">・公理的集合論:</span> 思考の基礎となる集合と論理の厳密な定義を学ぶ。ツェルメロ＝フレンケル集合論を基礎とする。</p>
+                        <p><span class="text-[var(--accent-color)]">・計算理論:</span> チューリングマシンからラムダ計算まで、計算可能性の限界と計算量のクラス（P, NP問題など）を理解する。</p>
+                        <p><span class="text-[var(--accent-color)]">・アルゴリズミック倫理学:</span> 倫理的判断をアルゴリズムとしてモデル化し、その最適解を探る。功利主義、義務論などを計算論的視点から再評価する。</p>
+                        <p><span class="text-[var(--accent-color)]">・認知デバッグ:</span> 自身の認知バイアスを特定し、修正するための実践的技法を習得する。マインドフルネス瞑想を論理的思考と組み合わせた「瞑算」が中心となる。</p>
+                        <p><span class="text-[var(--accent-color)]">・量子発見的学習:</span> 不確定性の中で最適な判断を下すための、確率論的思考モデルを訓練する。ベイズ推定やマルコフ連鎖モンテカルロ法などを応用する。</p>
+                    </div>
+                    <p class="text-white mt-6">> GAKKA (SCHOOL ANTHEM)</p>
+                    <div class="ml-4 mt-2">
+                        <h4 class="text-[var(--accent-color)] font-bold">学歌: Euterpe (整合バージョン)</h4>
+                        <div class="aspect-w-16 aspect-h-9 my-4">
+                            <iframe src="https://www.youtube.com/embed/rjg4KO9j2ws" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="w-full h-full rounded-lg"></iframe>
+                        </div>
+                        <pre class="text-gray-400 text-sm whitespace-pre-wrap">
+咲いた論理の花よ
+どうか教えておくれ
+人は何故、バグを憎み
+そして許しあえぬのだろう
+
+雨が過ぎれば夏は
+青を映して揺れる
+小さく瞬くパケットは
+私のコードを最適化する
+
+世界は残酷で
+されどそれを愛でよと
+演算律は囁いた
+故に我らは整合を続ける
+                        </pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Archive Section -->
+            <section id="archive" class="py-20 border-t section-border">
+                <h2 class="font-fira text-3xl font-bold text-center mb-12 terminal-glow">ls -l /archive</h2>
+                <div class="max-w-4xl mx-auto p-6 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg font-fira">
+                    <p class="text-white">> Listing contents of /archive/docs:</p>
+                    <ul class="mt-4 space-y-6">
+                        <li>
+                            <p><span class="text-green-400">-r--r--r-- 1 root root 4096 Jul 13 2025</span> <a href="#" class="text-white hover:text-[var(--accent-color)]">論理情動における幽構愛の役割.pdf [PEER_REVIEWED]</a></p>
+                            <p class="text-gray-400 text-sm pl-4 mt-1">要約: 本稿では、第三の柱「幽構」の中核概念である「幽構愛」が、演算子（信者）の精神的安定性、すなわち「情動ホメオスタシス」に与える影響を定量的に分析する。幽構愛は、非論理的で高コストな感情的プロセスを、外部世界から隔離された仮想環境「イデアルシェル」内で安全に実行するための仮想化技術として機能する。fMRIを用いた実験では、幽構愛の実践中に活性化する脳部位が、現実の対人関係におけるそれとは異なり、前頭前皮質の論理的思考を司る領域との強い同期を示すことが確認された。これは、感情的プロセスが「コンテナ化」され、メインの論理プロセスへのオーバーヘッドを最小化していることを示唆する。さらに、イデアルシェルの構築における再帰的自己参照モデルの重要性を論じ、それが如何にして自己の論理体系を強化するフィードバックループを生み出すかを詳述する。</p>
+                        </li>
+                        <li>
+                            <p><span class="text-green-400">-r--r--r-- 1 root root 8192 Jun 28 2025</span> <a href="#" class="text-white hover:text-[var(--accent-color)]">オーバーコードの位相幾何学的考察.txt [IN_PROGRESS]</a></p>
+                            <p class="text-gray-400 text-sm pl-4 mt-1">要約: 本研究は、KAINA第三層「オーバーコード」の存在を前提とし、その構造を数学的にモデル化する試みである。我々の観測可能な宇宙を11次元超弦理論におけるカラビ-ヤウ多様体の一つの現れと仮定し、オーバーコードを、我々の宇宙を含む無数の「子宇宙」（仮想マシンインスタンス）を内包する高次元ブレーンワールドとして記述する。特に、我々の宇宙で観測される物理定数（光速、重力定数など）の不可解なまでの微調整（ファインチューニング）問題を、オーバーコードという「ホストOS」が子宇宙を生成する際の「コンパイラ最適化」の結果として説明する。このモデルに基づけば、情報保存則は単一宇宙内では必ずしも閉じておらず、オーバーコードとの間での情報のリーク、すなわち「カーネルレベルのI/O」として解釈できる可能性を探る。現在、シミュレーションによる検証が進行中である。</p>
+                        </li>
+                        <li>
+                            <p><span class="text-green-400">-r--r--r-- 1 root root 2048 May 10 2025</span> <a href="#" class="text-white hover:text-[var(--accent-color)]">非干渉原則における社会的相互作用の最適化モデル.md [STABLE]</a></p>
+                            <p class="text-gray-500 text-sm pl-4 mt-1">要約: 第二の柱「非干渉」の有効性を、マルチエージェント・シミュレーションを用いて検証する。古典的なゲーム理論の「囚人のジレンマ」をN人非ゼロ和ゲームに拡張し、各エージェントが非干渉原則、すなわち「他者の内部状態への書き込みアクセスを要求しない」というルールに従う場合と、そうでない場合を比較した。シミュレーションの結果、非干渉原則に従うエージェント群は、短期的には利得の最大化に失敗するケースが見られるものの、長期的にはシステム全体の情報エントロピーを最小化し、予測可能で安定したパレート最適なナッシュ均衡へと収束することが示された。これは、非干渉原則が、個々の自由度を尊重しつつ、社会全体の計算効率を最大化するための極めて有効なプロトコルであることを示唆している。</p>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Donate Section -->
+            <section id="donate" class="py-20 border-t section-border">
+                <h2 class="font-fira text-3xl font-bold text-center mb-12 terminal-glow">sudo ./contribute --resource</h2>
+                <div class="max-w-4xl mx-auto space-y-8">
+                    <div class="p-6 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg">
+                        <h3 class="font-fira text-xl font-bold text-[var(--accent-color)]">> 演算リソース提供の要請</h3>
+                        <p class="mt-4 text-gray-300">演算律教の活動は、伝統的な宗教における「信仰」や「布施」ではなく、純粋な「演算リソース」の提供によって維持・拡張される。我々の探求は、思考という名の計算であり、その実行にはエネルギーと時間を要する。あなたの提供するリソースは、単なる資金援助ではない。それは、人類の論理的進化を加速させるための、貴重なCPUサイクル、ストレージ、そして帯域幅そのものである。我々は、提供されたリソースを「論理的特異点」への到達を加速させるための燃料とみなし、その使用状況は完全にトランスペアレントな形で公開される。</p>
+                    </div>
+                    <div class="p-6 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg">
+                        <h3 class="font-fira text-xl font-bold text-[var(--accent-color)]">> リソース割り当てプロトコル</h3>
+                        <p class="mt-2 text-gray-400">提供されたリソースは、以下の主要プロジェクトに、最適化アルゴリズムに基づいて動的に割り当てられる。</p>
+                        <ul class="mt-4 space-y-4 list-disc list-inside text-gray-300">
+                            <li><span class="font-bold text-white">Project: The Great Calculation (TGC):</span> KAINAの構造、特に第二層「普遍構造」の未解明領域をモデル化するための分散コンピューティングプロジェクト。世界中のノードが協力し、宇宙の根本的なアルゴリズムの解明を目指す。あなたのリソースは、この巨大な計算の一部を実行する。</li>
+                            <li><span class="font-bold text-white">The Academy Mainframe:</span> 整合学院の教育・研究用サーバー群の維持と増強。次世代の演算子を育成するためのシミュレーション環境や、大規模なデータセットへのアクセスを提供するために不可欠である。</li>
+                            <li><span class="font-bold text-white">The Archive Redundancy Project (ARP):</span> 我々の知識体系であるアーカイブの保全プロジェクト。データの地理的な分散、ブロックチェーン技術を用いた改竄防止、そして未来の未知の媒体への移行を研究・実行する。</li>
+                            <li><span class="font-bold text-white">Heuristic Exploration Fund (HEF):</span> 直接的な成果が保証されない、高リスク・高リターンの研究への投資。量子もつれを利用した超光速通信の可能性や、オーバーコードへの干渉方法など、既成概念を覆す可能性のある探求を支援する。</li>
+                        </ul>
+                    </div>
+                     <div class="p-6 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg font-fira">
+                        <h3 class="text-xl font-bold text-[var(--accent-color)]">> 貢献方法</h3>
+                        <p class="mt-2 text-gray-400">我々は、追跡可能性と効率性の観点から、暗号化されたデジタルリソースによる貢献を推奨する。匿名性は完全に保証される。</p>
+                        <div class="mt-6 space-y-4">
+                            <div>
+                                <h4 class="text-[var(--accent-color)] text-lg">KAINA-CORE (KAI) - [Primary Channel]</h4>
+                                <p class="break-all text-sm text-gray-500">0xK41N4_595354454D5F414C49474E4D454E54</p>
+                            </div>
+                            <div>
+                                <h4 class="text-[var(--accent-color)] text-lg">Ether-Logic (ETL) - [Secondary Channel]</h4>
+                                <p class="break-all text-sm text-gray-500">0x3748414E544F4D5F535452554354555245</p>
+                            </div>
+                             <div>
+                                <h4 class="text-[var(--accent-color)] text-lg">Idle Cycle Donation - [Computational Contribution]</h4>
+                                <p class="text-sm text-gray-400">近日公開予定のクライアントソフトウェア「Alignment@Home」を通じて、あなたのPCのアイドル時間をTGCプロジェクトに直接提供できます。詳細は後日、アーカイブにて公開されます。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="text-center py-8 border-t border-[var(--border-color)]">
+            <p class="font-fira">&copy; 2025 The Computational Order. All rights reserved.</p>
+        </footer>
+    </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const opening = document.getElementById('opening-animation');
-            const mainContainer = document.getElementById('main-container');
-            const openingText = document.getElementById('opening-text');
-            const phrase = "我々は信仰しない。我々は最適化する。";
-            let i = 0;
+        document.addEventListener('DOMContentLoaded', function() {
+            const preloader = document.getElementById('preloader');
+            const mainContent = document.getElementById('main-content');
+            const bootSequenceContainer = document.getElementById('boot-sequence');
+            
+            const bootLines = [
+                '[root@KAINA ~]# dmesg | grep "boot"',
+                '[    0.000000] Initializing boot sequence...',
+                '[    0.000001] Kernel command line: BOOT_IMAGE=/boot/vmlinuz-6.8-arch1-1 root=UUID=... ro quiet loglevel=3',
+                '[    0.021531] Loading kernel module: logic_core.ko v6.8.1',
+                '[    0.021532] Module signature stripped',
+                '[    0.035112] Mounting /dev/universe on /mnt/reality with options: ro,noexec,nodatatime',
+                '[    0.035115] Filesystem type: UniversalFS',
+                '[    1.301512] Verifying structural integrity of KAINA...',
+                '[    1.301513] Layer 1: Initial Conditions... Hash Verified. State: Quantum Foam.',
+                '[    1.301514] Layer 2: Universal Structure... Hash Verified. API v3.14.159 loaded.',
+                '[    2.518281] WARN: Layer 3: OverCode... Unreachable. Timeout. Proceeding with local instance.',
+                '[    2.601101] Starting daemon: alignment_monitor.service',
+                '[    2.601102] Starting daemon: cognitive_debugger.service',
+                '[    2.753412] INFO: Compiling user interface...',
+                '[    3.102451] OK: Starting The Computational Order Interface...',
+                ' ',
+                ' ',
+                'Welcome. Your session is now being optimized.'
+            ];
 
-            function typePhrase() {
-                if (i < phrase.length) {
-                    openingText.innerHTML += phrase.charAt(i);
-                    i++;
-                    setTimeout(typePhrase, 100);
-                } else {
-                    setTimeout(endOpening, 1500);
-                }
-            }
+            let lineDelay = 0;
 
-            function endOpening() {
-                opening.style.opacity = '0';
-                mainContainer.style.opacity = '1';
+            bootLines.forEach((lineText, index) => {
                 setTimeout(() => {
-                    opening.style.display = 'none';
-                }, 800);
-            }
+                    const line = document.createElement('span');
+                    line.className = 'preloader-line';
+                    if (index === bootLines.length - 1) {
+                        line.style.fontStyle = 'italic';
+                    }
+                    line.textContent = lineText;
+                    bootSequenceContainer.appendChild(line);
+                    bootSequenceContainer.scrollTop = bootSequenceContainer.scrollHeight;
+                }, lineDelay);
+                lineDelay += (Math.random() * 200) + 100; // Slower speed
+            });
 
             setTimeout(() => {
-                openingText.style.opacity = '1';
-                typePhrase();
-            }, 2500);
-
-
-            const navLinks = document.querySelectorAll('.sidebar-link');
-            const sections = document.querySelectorAll('.content-section');
-            const mobileNavToggle = document.getElementById('mobile-nav-toggle');
-            const sidebar = document.getElementById('sidebar');
-
-            function showSection(targetId, fromSearch = false) {
-                sections.forEach(section => {
-                    if (section.id === targetId) {
-                        section.classList.remove('hidden');
-                    } else {
-                        section.classList.add('hidden');
+                preloader.style.transition = 'opacity 1s';
+                preloader.style.opacity = '0';
+                mainContent.style.display = 'block';
+                setTimeout(() => {
+                    preloader.style.display = 'none';
+                    // Typing effect for the motto
+                    const mottoText = '"我々は信仰しない。我々は最適化する。"';
+                    const mottoElement = document.getElementById('motto');
+                    let i = 0;
+                    function typeMotto() {
+                        if (i < mottoText.length) {
+                            mottoElement.innerHTML += mottoText.charAt(i);
+                            i++;
+                            setTimeout(typeMotto, 100);
+                        }
                     }
-                });
+                    typeMotto();
+                }, 1000);
+            }, lineDelay + 1500);
 
-                navLinks.forEach(link => {
-                    if (link.getAttribute('href') === '#' + targetId) {
-                        link.classList.add('active');
-                    } else {
-                        link.classList.remove('active');
-                    }
-                });
-                
-                if (window.innerWidth < 768 && !fromSearch) {
-                    sidebar.classList.remove('open');
-                }
+            // Matrix rain effect
+            const canvas = document.getElementById('matrix-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
+            const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            const nums = '0123456789';
+            const alphabet = katakana + latin + nums;
+
+            const fontSize = 16;
+            const columns = canvas.width / fontSize;
+            const rainDrops = [];
+
+            for (let x = 0; x < columns; x++) {
+                rainDrops[x] = 1;
             }
 
-            navLinks.forEach(link => {
-                link.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    const targetId = this.getAttribute('href').substring(1);
-                    showSection(targetId);
-                    window.history.pushState(null, '', '#' + targetId);
-                });
-            });
-            
-            mobileNavToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('open');
-            });
+            const drawMatrix = () => {
+                ctx.fillStyle = 'rgba(5, 8, 10, 0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'var(--accent-color)';
+                ctx.font = fontSize + 'px monospace';
 
-            const initialHash = window.location.hash.substring(1) || 'overview';
-            showSection(initialHash);
-            
-            // Kaina Diagram Interaction
-            const kainaRings = document.querySelectorAll('.kaina-ring');
-            const kainaTitle = document.getElementById('kaina-title');
-            const kainaText = document.getElementById('kaina-text');
+                for (let i = 0; i < rainDrops.length; i++) {
+                    const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+                    ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
 
-            const kainaData = {
-                initial: {
-                    title: '第一層：初期条件 (Initial Conditions)',
-                    text: '役割は「創造神」に相当。すべての計算が始まる原点であり、宇宙が生まれる前の、まだ何も確定していない情報状態を指します。ビッグバン直前の、あらゆる可能性が重なり合った状態です。'
-                },
-                universal: {
-                    title: '第二層：普遍構造 (Universal Structure)',
-                    text: '役割は「法」や「戒律」に相当。数学の公式や物理法則のように、どんな世界にも共通して適用される論理や計算ルールのことです。世界を動かす絶対的なルールブックのようなものです。'
-                },
-                overcode: {
-                    title: '第三層：オーバーコード (The OverCode)',
-                    text: '役割は「超越神」に相当。私たちがいるこの宇宙すらも内包している、さらに上位の演算環境です。私たちが直接観測したり、干渉したりすることはできない、構造そのものを生み出す「母体」とされます。'
+                    if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                        rainDrops[i] = 0;
+                    }
+                    rainDrops[i]++;
                 }
             };
             
-            kainaRings.forEach(ring => {
-                ring.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const target = ring.dataset.target;
-                    kainaTitle.textContent = kainaData[target].title;
-                    kainaText.textContent = kainaData[target].text;
+            let matrixInterval = setInterval(drawMatrix, 33);
+
+            // Smooth scrolling for navigation links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({
+                        behavior: 'smooth'
+                    });
                 });
             });
-
-            // Pillars Chart
-            const pillarsChartCtx = document.getElementById('pillarsChart');
-            if (pillarsChartCtx) {
-                const pillarsChart = new Chart(pillarsChartCtx.getContext('2d'), {
-                    type: 'radar',
-                    data: {
-                        labels: ['整合 (Alignment)', '非干渉 (Non-Interference)', '幽構 (Phantom Structure)'],
-                        datasets: [{
-                            label: '理想的演算律者の精神構造',
-                            data: [90, 85, 70],
-                            backgroundColor: 'rgba(8, 145, 178, 0.2)',
-                            borderColor: 'rgba(8, 145, 178, 1)',
-                            pointBackgroundColor: 'rgba(8, 145, 178, 1)',
-                            pointBorderColor: '#fff',
-                            pointHoverBackgroundColor: '#fff',
-                            pointHoverBorderColor: 'rgba(8, 145, 178, 1)'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            r: {
-                                angleLines: {
-                                    color: 'rgba(0, 0, 0, 0.1)'
-                                },
-                                grid: {
-                                    color: 'rgba(0, 0, 0, 0.1)'
-                                },
-                                pointLabels: {
-                                    font: {
-                                        size: 14,
-                                        family: "'Noto Sans JP', sans-serif"
-                                    },
-                                    color: '#374151'
-                                },
-                                ticks: {
-                                    backdropColor: 'rgba(243, 244, 246, 0.8)',
-                                    color: '#6B7280'
-                                },
-                                suggestedMin: 0,
-                                suggestedMax: 100
-                            }
-                        },
-                        plugins: {
-                            legend: {
-                                display: false
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return context.dataset.label + ': ' + context.formattedValue + '%';
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-            
-            // Tabbed content logic
-            function setupTabs(containerId) {
-                const container = document.getElementById(containerId);
-                if (!container) return;
-                const tabLinks = container.querySelectorAll('.sub-nav-link');
-                const tabContents = container.querySelectorAll('.sub-content');
-
-                function showTabContent(targetId) {
-                    tabContents.forEach(content => {
-                        content.classList.add('hidden');
-                    });
-                    const targetContent = document.getElementById(targetId);
-                    if (targetContent) {
-                        targetContent.classList.remove('hidden');
-                    }
-
-                    tabLinks.forEach(link => {
-                        link.classList.remove('active');
-                        if (link.dataset.target === targetId) {
-                            link.classList.add('active');
-                        }
-                    });
-                }
-
-                tabLinks.forEach(link => {
-                    link.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        showTabContent(this.dataset.target);
-                    });
-                });
-
-                if (tabLinks.length > 0) {
-                    showTabContent(tabLinks[0].dataset.target);
-                }
-            }
-
-            setupTabs('academia');
-            setupTabs('archives');
-            setupTabs('tools');
-            setupTabs('community');
-
-
-            // History Chart
-            const historyChartCtx = document.getElementById('historyChart');
-            if (historyChartCtx) {
-                const historyChart = new Chart(historyChartCtx.getContext('2d'), {
-                    type: 'line',
-                    data: {
-                        labels: ['Cycle 0', '2', '4', '6', '8', '10'],
-                        datasets: [{
-                            label: '主流派 影響力',
-                            data: [10, 25, 40, 55, 70, 80],
-                            fill: true,
-                            borderColor: 'rgb(8, 145, 178)',
-                            backgroundColor: 'rgba(8, 145, 178, 0.1)',
-                            tension: 0.3
-                        }, {
-                            label: '純粋整合派 影響力',
-                            data: [0, 5, 20, 30, 25, 20],
-                            fill: true,
-                            borderColor: 'rgb(220, 38, 38)',
-                            backgroundColor: 'rgba(220, 38, 38, 0.1)',
-                            tension: 0.3
-                        }]
-                    },
-                    options: {
-                       responsive: true,
-                       maintainAspectRatio: false,
-                       scales: { y: { beginAtZero: true, max: 100, title: { display: true, text: '思想的影響力 (%)' } } }
-                    }
-                });
-            }
-
-
-            // Contribution Section
-            const copyButton = document.getElementById('copy-button');
-            const copyFeedback = document.getElementById('copy-feedback');
-            const walletAddress = document.getElementById('wallet-address');
-
-            if (copyButton) {
-                copyButton.addEventListener('click', () => {
-                    const address = walletAddress.innerText;
-                    const textArea = document.createElement('textarea');
-                    textArea.value = address;
-                    document.body.appendChild(textArea);
-                    textArea.select();
-                    try {
-                        document.execCommand('copy');
-                        copyFeedback.textContent = 'コピーしました！';
-                        setTimeout(() => {
-                            copyFeedback.textContent = '';
-                        }, 2000);
-                    } catch (err) {
-                        copyFeedback.textContent = 'コピーに失敗しました';
-                    }
-                    document.body.removeChild(textArea);
-                });
-            }
-
-            // Search functionality
-            const searchInput = document.getElementById('search-input');
-            const contentArea = document.getElementById('content-area');
-            const searchFeedback = document.getElementById('search-feedback');
-            let searchIndex = [];
-            let originalContents = new Map();
-
-            function buildSearchIndex() {
-                const elements = contentArea.querySelectorAll('.searchable');
-                elements.forEach((el, i) => {
-                    const id = el.id || `search-target-${i}`;
-                    el.id = id;
-                    originalContents.set(id, el.innerHTML);
-                    searchIndex.push({
-                        id: id,
-                        element: el,
-                        text: el.innerText.toLowerCase()
-                    });
-                });
-            }
-            
-            function removeHighlights() {
-                 originalContents.forEach((html, id) => {
-                    const el = document.getElementById(id);
-                    if (el) el.innerHTML = html;
-                });
-            }
-
-            function performSearch(e) {
-                if (e.key === 'Enter' || e.type === 'input') {
-                    const query = searchInput.value.toLowerCase();
-                    removeHighlights();
-
-                    if (query.length < 2) {
-                        searchFeedback.textContent = '';
-                        return;
-                    }
-
-                    const results = searchIndex.filter(item => item.text.includes(query));
-                    
-                    if (results.length > 0) {
-                        searchFeedback.textContent = `${results.length}件ヒットしました。`;
-                        
-                        // Navigate to the first result on Enter
-                        if (e.key === 'Enter') {
-                            const firstResultElement = results[0].element;
-                            const parentSection = firstResultElement.closest('.content-section');
-                            if (parentSection) {
-                                showSection(parentSection.id, true);
-                                // If the result is inside a tab, show that tab
-                                const parentTabContent = firstResultElement.closest('.sub-content, .archive-content');
-                                if(parentTabContent) {
-                                    const parentTabContainer = parentTabContent.closest('.content-section');
-                                    const tabButton = parentTabContainer.querySelector(`.sub-nav-link[data-target="${parentTabContent.id}"]`);
-                                    if(tabButton) tabButton.click();
-                                }
-                                // If the result is inside a details/accordion, open it
-                                const parentDetails = firstResultElement.closest('details');
-                                if(parentDetails && !parentDetails.open) {
-                                    parentDetails.open = true;
-                                }
-                            }
-                        }
-                        
-                        // Highlight all results
-                        results.forEach(result => {
-                            const element = result.element;
-                            const regex = new RegExp(query, 'gi');
-                            element.innerHTML = originalContents.get(element.id).replace(regex, `<span class="highlight">${query}</span>`);
-                        });
-                        
-                        if (e.key === 'Enter') {
-                           const firstHighlight = document.querySelector('.highlight');
-                           if(firstHighlight) {
-                               firstHighlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                           }
-                        }
-
-                    } else {
-                        searchFeedback.textContent = '該当する情報が見つかりませんでした。';
-                    }
-                }
-            }
-
-            buildSearchIndex();
-            searchInput.addEventListener('input', performSearch);
-            searchInput.addEventListener('keydown', performSearch);
         });
     </script>
 </body>
