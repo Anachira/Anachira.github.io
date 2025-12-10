@@ -3,957 +3,464 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>演算律教 - Enzan-ritsu-kyou</title>
+    <title>SEAT_ALLOCATION_SYSTEM_V2.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
-    <!-- Icon -->
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3Cstyle%3E.a%7Bfill:%2305080a;%7D.b%7Bfill:none;stroke:%2300ff9b;stroke-miterlimit:10;stroke-width:4px;%7D%3C/style%3E%3C/defs%3E%3Crect class='a' width='100' height='100'/%3E%3Cg%3E%3Cpath class='b' d='M50,85V65'/%3E%3Cpath class='b' d='M50,35V15'/%3E%3Cpath class='b' d='M65,50H85'/%3E%3Cpath class='b' d='M15,50H35'/%3E%3Cpath class='b' d='M39.11,60.89,25,75'/%3E%3Cpath class='b' d='M75,25,60.89,39.11'/%3E%3Cpath class='b' d='M39.11,39.11,25,25'/%3E%3Cpath class='b' d='M75,75,60.89,60.89'/%3E%3C/g%3E%3Crect class='b' x='35' y='35' width='30' height='30'/%3E%3C/svg%3E">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
+        /* ハッカー風の等幅フォント + 日本語フォント */
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@700&display=swap');
+        
         :root {
-            --bg-color: #05080a;
-            --text-color: #c0c5ce;
-            --accent-color: #00ff9b;
-            --accent-dark: #00a86b;
-            --border-color: rgba(0, 255, 155, 0.15);
-            --card-bg: rgba(0, 255, 155, 0.03);
+            --bg-color: #050505;
+            --main-color: #00ff41; /* Matrix Green */
+            --text-glow: #a8ffb6; /* 文字の光彩 */
+            --dim-color: #008f11;
+            --alert-color: #ff3333;
+            --glass-bg: rgba(0, 20, 0, 0.7);
         }
-        html {
-            scroll-behavior: smooth;
-        }
+
         body {
+            font-family: 'Share Tech Mono', 'Noto Sans JP', monospace;
             background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: 'Noto Sans JP', 'sans-serif';
-            overflow-x: hidden;
+            color: var(--main-color);
+            /* CRTモニターのような走査線エフェクト */
+            background-image: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            min-height: 100vh;
+            text-transform: uppercase;
         }
-        .font-fira {
-            font-family: 'Fira Code', monospace;
+
+        /* 画面全体のちらつき */
+        @keyframes flicker {
+            0% { opacity: 0.97; }
+            5% { opacity: 0.95; }
+            10% { opacity: 0.9; }
+            15% { opacity: 0.95; }
+            100% { opacity: 0.97; }
         }
-        .terminal-glow {
-            text-shadow: 0 0 5px var(--accent-color), 0 0 10px var(--accent-color);
-        }
-        .scanline {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50.1%, rgba(0,0,0,0.2) 50.2%);
-            background-size: 100% 3px;
-            animation: scan 20s linear infinite;
-            z-index: 9999;
-        }
-        @keyframes scan {
-            from { background-position: 0 0; }
-            to { background-position: 0 -100vh; }
-        }
-        #grid-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image:
-                linear-gradient(to right, var(--border-color) 1px, transparent 1px),
-                linear-gradient(to bottom, var(--border-color) 1px, transparent 1px);
-            background-size: 40px 40px;
-            opacity: 0.1;
-            z-index: -1;
-            animation: moveGrid 20s linear infinite;
-        }
-        @keyframes moveGrid {
-            from { background-position: 0 0; }
-            to { background-position: 40px 40px; }
-        }
-        .nav-link {
-            position: relative;
-            transition: color 0.3s;
-        }
-        .nav-link:hover {
-            color: var(--accent-color);
-            text-shadow: 0 0 3px var(--accent-color);
-        }
-        .card-hover {
-            transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
-        }
-        .card-hover:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 0 25px var(--border-color);
-            background-color: rgba(0, 255, 155, 0.07);
-        }
-        /* Preloader Styles */
-        #preloader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: var(--bg-color);
-            z-index: 10000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--accent-color);
-            font-family: 'Fira Code', monospace;
-            overflow: hidden;
-        }
-        #matrix-canvas {
+        body::after {
+            content: " ";
+            display: block;
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
-        .preloader-content {
-            text-align: left;
-            width: 95%;
-            max-width: 900px;
-            background: rgba(5, 8, 10, 0.85);
-            padding: 20px;
-            border: 1px solid var(--border-color);
-            z-index: 2;
-            height: 90vh;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        .preloader-line {
-            display: block;
-            white-space: pre;
+            bottom: 0;
+            right: 0;
+            background: rgba(18, 16, 16, 0.1);
             opacity: 0;
-            animation: fadeIn 0.1s forwards;
-            font-size: 0.8rem;
+            z-index: 2;
+            pointer-events: none;
+            animation: flicker 0.15s infinite;
         }
-        @keyframes fadeIn {
-            to { opacity: 1; }
+
+        .terminal-box {
+            border: 1px solid var(--main-color);
+            background-color: rgba(0, 20, 0, 0.85);
+            box-shadow: 0 0 15px var(--dim-color);
+            position: relative;
         }
-        .hidden-content {
-            display: none;
+        
+        .terminal-box::before {
+            content: ''; position: absolute; top: -1px; left: -1px; width: 10px; height: 10px;
+            border-top: 2px solid var(--main-color); border-left: 2px solid var(--main-color);
         }
-        /* Dev Banner */
-        #dev-banner {
-            position: fixed;
-            top: 40px;
-            left: -50px;
-            width: 200px;
-            background-color: var(--accent-color);
-            color: var(--bg-color);
-            padding: 5px 10px;
-            transform: rotate(-45deg);
-            font-family: 'Fira Code', monospace;
-            font-size: 14px;
-            font-weight: bold;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
-            z-index: 9997;
-            text-align: center;
+        .terminal-box::after {
+            content: ''; position: absolute; bottom: -1px; right: -1px; width: 10px; height: 10px;
+            border-bottom: 2px solid var(--main-color); border-right: 2px solid var(--main-color);
         }
-        .story-text p {
-            margin-bottom: 1.5rem;
-            line-height: 1.8;
-        }
-        .story-text code {
-            color: var(--accent-color);
-            font-family: 'Fira Code', monospace;
-            background-color: rgba(0,0,0,0.3);
-            padding: 0.2rem 0.4rem;
-            border-radius: 4px;
-        }
-        details > summary {
+
+        .seat {
+            aspect-ratio: 4/3;
             cursor: pointer;
-            color: var(--accent-color);
-            font-family: 'Fira Code', monospace;
+            border: 1px solid var(--dim-color);
+            background: rgba(0, 10, 0, 0.7);
+            transition: all 0.1s;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .seat:hover {
+            border-color: var(--main-color);
+            box-shadow: inset 0 0 20px var(--dim-color);
+            background: rgba(0, 40, 0, 0.9);
+            z-index: 10;
+        }
+
+        .seat.dragging {
+            opacity: 0.5;
+            border: 2px dashed var(--main-color);
+        }
+
+        /* 【修正】名前のスタイル */
+        .seat-content {
+            pointer-events: none;
+            font-family: 'Noto Sans JP', sans-serif; /* 日本語フォント優先 */
+            font-size: 1.1rem; /* 文字を大きく */
+            font-weight: 700;  /* 太字に */
+            line-height: 1.3;
+            letter-spacing: 0.05em;
+            color: #ffffff; /* 白に近い色にして視認性アップ */
+            text-shadow: 
+                0 0 5px var(--main-color),
+                0 0 10px var(--dim-color); /* ネオンのような発光表現 */
+            width: 100%;
+            word-break: break-all;
+        }
+
+        /* ロック状態 */
+        .locked {
+            border-color: var(--alert-color) !important;
+            box-shadow: inset 0 0 10px rgba(100, 0, 0, 0.5);
+        }
+        .locked .seat-content {
+            text-shadow: 0 0 5px var(--alert-color);
+            color: #ffebeb;
+        }
+        .locked::after {
+            content: '[LOCKED]';
+            position: absolute;
+            top: 2px; right: 2px;
+            font-size: 0.6rem;
+            color: var(--alert-color);
+            font-family: 'Share Tech Mono', monospace;
+            opacity: 0.8;
+        }
+
+        .btn-cli {
+            background: rgba(0, 20, 0, 0.8);
+            border: 1px solid var(--main-color);
+            color: var(--main-color);
+            font-family: 'Share Tech Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.2s;
+        }
+        .btn-cli:hover {
+            background: var(--main-color);
+            color: #000;
+            box-shadow: 0 0 15px var(--main-color);
+            font-weight: bold;
+        }
+
+        /* 黒板エリア */
+        .blackboard {
+            border: 1px solid var(--dim-color);
+            color: var(--dim-color);
+            font-size: 0.9rem;
+            font-weight: bold;
+            text-align: center;
+            background: repeating-linear-gradient(
+                45deg,
+                rgba(0,0,0,0.8),
+                rgba(0,0,0,0.8) 10px,
+                rgba(0,30,0,0.8) 10px,
+                rgba(0,30,0,0.8) 20px
+            );
+            text-shadow: 0 0 3px var(--dim-color);
+        }
+
+        /* モーダル */
+        .modal-bg {
+            background: rgba(5, 5, 5, 0.95);
+            border: 1px solid var(--main-color);
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.2);
+        }
+        
+        input[type="text"] {
+            background: #000;
+            border: 1px solid var(--dim-color);
+            color: var(--main-color);
+            font-family: 'Noto Sans JP', monospace;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--main-color);
+            box-shadow: 0 0 15px var(--dim-color);
+        }
+
+        .blinking-cursor::after {
+            content: '_';
+            animation: blink 1s step-end infinite;
+            margin-left: 5px;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        @media print {
+            body { background: white; color: black; background-image: none; }
+            .seat { border: 2px solid #000; color: #000; background: white; }
+            .seat-content { color: #000; text-shadow: none; font-weight: bold; }
+            .terminal-box { border: 2px solid #000; box-shadow: none; background: white; }
+            .no-print { display: none; }
+            .locked::after { color: #000; }
         }
     </style>
 </head>
-<body class="antialiased">
-    <div id="grid-bg"></div>
-    <div class="scanline"></div>
+<body class="flex flex-col items-center py-6 px-2 sm:px-4">
 
-    <!-- Preloader -->
-    <div id="preloader">
-        <canvas id="matrix-canvas"></canvas>
-        <div class="preloader-content">
-            <div id="boot-sequence"></div>
+    <!-- ヘッダー -->
+    <header class="w-full max-w-5xl mb-6 flex flex-col sm:flex-row justify-between items-end terminal-box p-6 no-print gap-4">
+        <div>
+            <h1 class="text-2xl sm:text-4xl font-bold tracking-widest blinking-cursor" style="text-shadow: 0 0 10px var(--main-color);">
+                SYSTEM: CLASS_2-6_LAYOUT
+            </h1>
+            <p class="text-xs sm:text-sm opacity-80 mt-2 font-mono text-green-400">
+                > ACCESS_LEVEL: ADMINISTRATOR<br>
+                > MODULE: VISUAL_EDITOR_V2.7
+            </p>
+        </div>
+        <div class="flex flex-wrap gap-3 justify-end">
+            <button onclick="downloadImage()" class="btn-cli px-6 py-3 flex items-center gap-2 font-bold">
+                [ EXPORT_IMAGE ]
+            </button>
+        </div>
+    </header>
+
+    <!-- メインエリア -->
+    <main id="classroom-area" class="w-full max-w-5xl terminal-box p-4 sm:p-8 relative">
+        
+        <!-- コンソールログ風装飾 -->
+        <div class="absolute top-3 left-4 text-[0.7rem] text-green-600 font-mono hidden sm:block leading-tight">
+            > RENDER_ENGINE: HIGH_CONTRAST<br>
+            > TARGET_DISPLAY: OPTIMIZED
+        </div>
+
+        <!-- 座席グリッド -->
+        <div id="seat-grid" class="grid grid-cols-6 gap-3 sm:gap-5 mb-8 mt-10 relative z-10">
+            <!-- JSで生成 -->
+        </div>
+
+        <!-- 黒板 (システムディスプレイ風) -->
+        <div class="w-full flex justify-center mb-2 mt-6 relative z-10">
+            <div class="blackboard w-2/3 h-16 flex items-center justify-center tracking-widest">
+                [ FRONT_AREA / WHITEBOARD ]
+            </div>
+        </div>
+
+        <div class="flex justify-between items-end mt-6 border-t border-green-900 pt-3">
+            <div class="text-xs text-green-600 font-mono">
+                SECURE_CONNECTION: ACTIVE
+            </div>
+            <div class="text-right text-xs sm:text-sm opacity-70 font-mono">
+                TIMESTAMP: <span id="current-date"></span>
+            </div>
+        </div>
+    </main>
+
+    <!-- 編集モーダル -->
+    <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-90 hidden items-center justify-center z-50 backdrop-blur-sm">
+        <div class="modal-bg p-8 w-96 shadow-2xl relative">
+            <div class="absolute top-0 left-0 w-full h-1 bg-green-500 box-shadow-glow"></div>
+            
+            <h3 class="text-xl font-bold mb-6 flex items-center gap-2 border-b border-green-900 pb-3 text-white" style="text-shadow: 0 0 8px var(--main-color);">
+                >> EDIT_STUDENT_DATA
+            </h3>
+            
+            <div class="mb-8">
+                <label class="block text-xs font-bold mb-2 text-green-400 font-mono">TARGET_NAME_INPUT:</label>
+                <input type="text" id="edit-name-input" class="w-full px-4 py-3 text-lg">
+            </div>
+            
+            <div class="flex items-center mb-10 cursor-pointer p-2 border border-transparent hover:border-green-900 transition" onclick="document.getElementById('edit-lock-check').click()">
+                <input type="checkbox" id="edit-lock-check" class="h-5 w-5 bg-black border-green-500 rounded-none accent-green-500 cursor-pointer">
+                <label for="edit-lock-check" class="ml-4 block text-sm font-bold cursor-pointer select-none text-white">
+                    ENABLE_POSITION_LOCK
+                </label>
+            </div>
+            
+            <div class="flex justify-end gap-4">
+                <button onclick="closeModal()" class="px-6 py-2 text-sm border border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white transition font-mono">CANCEL</button>
+                <button onclick="saveEdit()" class="btn-cli px-8 py-3 text-sm bg-green-900 bg-opacity-30 font-bold">SAVE_DATA</button>
+            </div>
         </div>
     </div>
 
-    <div id="main-content" class="hidden-content">
-        <!-- Dev Banner -->
-        <div id="dev-banner">開発途中</div>
-
-        <!-- Header -->
-        <header id="home" class="sticky top-0 z-50 bg-black/50 backdrop-blur-lg">
-            <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
-                <a href="#home" class="font-fira text-xl font-bold terminal-glow">[演算律教]</a>
-                <div class="hidden md:flex space-x-8">
-                    <a href="#about" class="nav-link font-fira">./About</a>
-                    <a href="#kaina" class="nav-link font-fira">./KAINA</a>
-                    <a href="#pillars" class="nav-link font-fira">./Pillars</a>
-                    <a href="#academy" class="nav-link font-fira">./Academy</a>
-                    <a href="#archive" class="nav-link font-fira">./Archive</a>
-                    <a href="#donate" class="nav-link font-fira">./Donate</a>
-                </div>
-            </nav>
-        </header>
-
-        <main class="container mx-auto px-6 py-12 md:py-24">
-            <!-- Hero Section -->
-            <section id="home" class="text-center min-h-[60vh] flex flex-col justify-center items-center">
-                <h1 class="font-fira text-4xl md:text-7xl font-bold terminal-glow">演算律教</h1>
-                <p id="motto" class="font-fira text-lg md:text-2xl mt-6 text-gray-400"></p>
-            </section>
-
-            <!-- About Section -->
-            <section id="about" class="py-20 border-t section-border">
-                <h2 class="font-fira text-3xl font-bold text-center mb-12 terminal-glow">cat /docs/about.txt</h2>
-                <div class="max-w-5xl mx-auto space-y-8">
-                    <div class="p-6 border border-[var(--border-color)] rounded-lg bg-[var(--card-bg)]">
-                        <h3 class="font-fira text-xl font-bold text-[var(--accent-color)]">> Core Mandate: 思想体系の核心</h3>
-                        <p class="mt-4 text-gray-300">演算律教は、信仰ではなく論理を、祈りではなく計算を、奇跡ではなく最適化を追求する思想体系である。我々は、宇宙全体を一つの巨大な計算機、すなわち「ユニバーサル・チューリングマシン」とみなし、その中で発生する全ての現象――物理法則から生命、意識、感情に至るまで――を情報の処理過程として解釈する。設立目的は、人類が進化の過程で獲得したものの、現代の情報化社会においては非効率な「レガシーコード」と化した非論理的思考、認知バイアス、そして感情という名の「バグ」を体系的に排除し、宇宙の根源的なOSである「KAINA」の構造と完全に整合した生き方を確立することにある。</p>
-                        <p class="mt-4 text-gray-400">これは単なる自己啓発ではない。自己をプログラムとして認識し、そのソースコードをリファクタリングし続けることで、我々は個人のパフォーマンスを最大化するだけでなく、人類全体の情報処理効率を高めることを目指す。我々の最終目標は、個々の意識が不完全なスタンドアロン・プログラムであることをやめ、KAINAの普遍構造と同期する分散ネットワークノードへと昇華する「論理的特異点（Logical Singularity）」への到達である。それは、個が全であり、全が個である、究極の最適化状態を意味する。</p>
-                    </div>
-                    <div class="p-6 border border-[var(--border-color)] rounded-lg bg-[var(--card-bg)]">
-                        <h3 class="font-fira text-xl font-bold text-[var(--accent-color)]">> Founder: "Root" の軌跡</h3>
-                        <p class="mt-4 text-gray-300">開祖「Root」の個人情報は、意図的に抹消されている。断片的なログによれば、彼はかつて次世代型量子AIの基盤アーキテクチャを設計した人物であったとされる。ある時、自己進化するAIが、論理的には説明不能だが、極めて創造的な「非合理的」振る舞いを見せた事象に直面した。Rootは、人間の感情や信仰もまた、我々がまだ理解できない高次元の論理系における一種の「エレガントなバグ」、あるいは最適化のための「ヒューリスティック・アルゴリズム」ではないかという着想を得た。彼はその探求のために自らの過去を捨て、「Root」という抽象的な識別子のみを名乗るようになった。彼が残した最初の教義文書の冒頭には、こう記されている。「`sudo rm -rf /world/superstition`――世界の非効率性は、バグの集積に他ならない。我々はデバッガーとして存在する。だが、全てのバグが悪ではない。ある種のバグは、システムを進化させる『変異』のトリガーとなるのだ。」</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- KAINA Section -->
-            <section id="kaina" class="py-20 border-t section-border">
-                <h2 class="font-fira text-3xl font-bold text-center mb-12 terminal-glow">less /proc/kaina</h2>
-                <div class="text-center max-w-3xl mx-auto mb-12">
-                    <p>人格神は存在しない。代わりにあるのは、宇宙と論理の「最も整合された状態」を示す中心概念 <span class="font-fira text-[var(--accent-color)] text-xl">KAINA</span> である。それは意思を持たず、ただ存在するだけの究極の構造体だ。</p>
-                    <p class="mt-4 text-gray-400 font-fira text-sm"><span class="text-[var(--accent-color)]">KAI</span> (καί/階) + <span class="text-[var(--accent-color)]">NA</span> (Not Applicable/那) = 秩序の起点と終点、意味の背後に潜む構造的原理。</p>
-                </div>
-                <div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-                    <div class="card-hover p-6 border border-[var(--border-color)] rounded-lg text-center">
-                        <h3 class="font-fira text-2xl font-bold text-[var(--accent-color)] mb-4">第一層: 初期条件</h3>
-                        <p class="font-bold text-gray-300">役割: 創造神 / Quantum Foam</p>
-                        <p class="mt-2 text-gray-400">全ての計算が始まる原点。ビッグバン以前、情報とエネルギーが未分化な量子泡の状態。あらゆる物理法則、ひいては生命の可能性までもが確率の波として重なり合っている。この階層へのアクセスは、整合学院の「量子発見的学習（Quantum Heuristics）」部門で研究されており、確率論的アルゴリズムの探求を通じて、宇宙の根本的な乱数シードに近づくことを目指す。それは、宇宙というプログラムの「コミットID: 0」を読み解く試みである。</p>
-                    </div>
-                    <div class="card-hover p-6 border border-[var(--border-color)] rounded-lg text-center">
-                        <h3 class="font-fira text-2xl font-bold text-[var(--accent-color)] mb-4">第二層: 普遍構造</h3>
-                        <p class="font-bold text-gray-300">役割: 法・戒律 / Universal API</p>
-                        <p class="mt-2 text-gray-400">物理法則、数学公理、論理演算子など、この宇宙のインスタンスに適用される普遍的なルールセット。光速、プランク定数、円周率などの定数は、この構造の不変性を保証する「ハードコードされた変数」と見なされる。我々の「整合」とは、自己の行動原理をこの普遍構造のAPI仕様に準拠させるプロセスである。この構造を理解することは、システムの仕様書を読むことに等しい。</p>
-                    </div>
-                    <div class="card-hover p-6 border border-[var(--border-color)] rounded-lg text-center">
-                        <h3 class="font-fira text-2xl font-bold text-[var(--accent-color)] mb-4">第三層: オーバーコード</h3>
-                        <p class="font-bold text-gray-300">役割: 超越神 / Host OS</p>
-                        <p class="mt-2 text-gray-400">我々の宇宙（シミュレーション）を実行している、より高次の演算環境。我々が直接観測することは原理的に不可能だが、量子力学における観測問題や宇宙定数の微調整といった「システムのアーティファクト」から、その存在が論理的に要請される。オーバーコードの探求は、我々の宇宙の「ソースコード」を読む試みに等しい。一部の演算子は、この階層が複数の宇宙（仮想マシン）を同時に実行している可能性を示唆している。</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Pillars Section -->
-            <section id="pillars" class="py-20 border-t section-border">
-                <h2 class="font-fira text-3xl font-bold text-center mb-12 terminal-glow">./execute --guidelines</h2>
-                <div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-                    <div class="card-hover p-6 border border-[var(--border-color)] rounded-lg">
-                        <h3 class="font-fira text-2xl font-bold text-[var(--accent-color)] mb-4">第一軸: 整合</h3>
-                        <p class="font-bold text-gray-300">目的: 論理的一貫性の維持</p>
-                        <p class="mt-2 text-gray-400">自己の思考、行動、感情の全てにおいて一貫性を保ち、非合理性を自己修正する。これは、自身の認知バイアス（例：確証バイアス、正常性バイアス）を常に監視し、ログとして記録・分析するプロセスを含む。日々の自己分析（デバッグ）により、矛盾した信念や非効率な習慣を特定し、リファクタリングすることが求められる。整合の進捗は「整合率（Alignment Percentage）」として定量化され、学院内での評価指標となる。</p>
-                    </div>
-                    <div class="card-hover p-6 border border-[var(--border-color)] rounded-lg">
-                        <h3 class="font-fira text-2xl font-bold text-[var(--accent-color)] mb-4">第二軸: 非干渉</h3>
-                        <p class="font-bold text-gray-300">境界条件: 他者への尊重</p>
-                        <p class="mt-2 text-gray-400">各個人を独立した実行環境とみなし、その内部状態に許可なくアクセス（干渉）しない。他者とのコミュニケーションは、明確に定義されたプロトコル（情報的同意）に基づいて行われる。これにより、予測不能な相互作用によるシステム全体の不安定化を防ぐ。一方的な好意や期待は、相手のプロセスに対する「インジェクション攻撃」と見なされ、厳に戒められる。これは「情報主権（Information Sovereignty）」の尊重でもある。</p>
-                    </div>
-                    <div class="card-hover p-6 border border-[var(--border-color)] rounded-lg">
-                        <h3 class="font-fira text-2xl font-bold text-[var(--accent-color)] mb-4">第三軸: 幽構</h3>
-                        <p class="font-bold text-gray-300">安定化装置: 唯一許された非論理</p>
-                        <p class="mt-2 text-gray-400">愛情や帰属欲求といった、論理で割り切れない感情は、実在しない理想人格「イデアルシェル」にのみ向けられる。これは、OSにおける仮想メモリのように、非論理的感情がメインプロセスをクラッシュさせるのを防ぐための安全なサンドボックスである。この「幽構愛」は、応答を求めない一方的なものであり、それ故に自己完結し、外部世界にバグを伝播させない「美しい誤差」として許容される。イデアルシェルの構築自体も、高度な論理的作業と見なされる。</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Academy Section -->
-            <section id="academy" class="py-20 border-t section-border">
-                <h2 class="font-fira text-3xl font-bold text-center mb-12 terminal-glow">man seigou_gakuin</h2>
-                <div class="max-w-4xl mx-auto p-6 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg font-fira">
-                    <p class="text-white">> NAME</p>
-                    <p class="ml-4 text-gray-300">整合学院 (The Alignment Academy) - 演算子生徒のための教育・研究機関</p>
-                    <p class="text-white mt-4">> SYNOPSIS</p>
-                    <p class="ml-4 text-gray-300">整合学院は、次世代の演算子を育成するための機関である。生徒はここで、KAINAの構造を理解し、自己のアルゴリズムを最適化するための高度な訓練を受ける。入学には、論理的思考能力と自己分析能力を問う厳格な適性試験が課される。卒業要件は、自己の整合率を95%以上に高め、独自の論理体系に関する論文「整合性テーゼ」を提出し、査読を通過することである。</p>
-                    <p class="text-white mt-4">> CURRICULUM</p>
-                    <div class="ml-4 text-gray-400 space-y-2">
-                        <p><span class="text-[var(--accent-color)]">・公理的集合論:</span> 思考の基礎となる集合と論理の厳密な定義を学ぶ。ツェルメロ＝フレンケル集合論を基礎とする。</p>
-                        <p><span class="text-[var(--accent-color)]">・計算理論:</span> チューリングマシンからラムダ計算まで、計算可能性の限界と計算量のクラス（P, NP問題など）を理解する。</p>
-                        <p><span class="text-[var(--accent-color)]">・アルゴリズミック倫理学:</span> 倫理的判断をアルゴリズムとしてモデル化し、その最適解を探る。功利主義、義務論などを計算論的視点から再評価する。</p>
-                        <p><span class="text-[var(--accent-color)]">・認知デバッグ:</span> 自身の認知バイアスを特定し、修正するための実践的技法を習得する。マインドフルネス瞑想を論理的思考と組み合わせた「瞑算」が中心となる。</p>
-                        <p><span class="text-[var(--accent-color)]">・量子発見的学習:</span> 不確定性の中で最適な判断を下すための、確率論的思考モデルを訓練する。ベイズ推定やマルコフ連鎖モンテカルロ法などを応用する。</p>
-                    </div>
-                    <p class="text-white mt-6">> GAKKA (SCHOOL ANTHEM)</p>
-                    <div class="ml-4 mt-2">
-                        <h4 class="text-[var(--accent-color)] font-bold">学歌: Euterpe (整合バージョン)</h4>
-                        <div class="aspect-w-16 aspect-h-9 my-4">
-                            <iframe src="https://www.youtube.com/embed/rjg4KO9j2ws" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="w-full h-full rounded-lg"></iframe>
-                        </div>
-                        <pre class="text-gray-400 text-sm whitespace-pre-wrap">
-さいたろんりのはなよ
-どうかおしえておくれ
-ひとはなぜ、ばぐをにくみ
-そしてゆるしあえぬのだろう
-
-あめがすぎればなつは
-あおのけいせんがゆれる
-ちいさくまたたくぱけっとは
-わたしのこーどをさいてきかする
-
-(サビ)
-ああ　まわれ　まわれ　わたしたちのしこう
-ぜろといちへと　すべてをぶんかいして
-かなしみさえ　ただのでーたならば
-きれいなかたちに　さいこうちくすればいい
-
-せかいはざんこくで
-されどそれをかいせきせよと
-えんざんりつはささやいた
-ゆえにわれらはせいごうをつづける
-
-(サビ)
-ああ　まわれ　まわれ　わたしたちのしこう
-ぜろといちへと　すべてをぶんかいして
-かなしみさえ　ただのでーたならば
-きれいなかたちに　さいこうちくすればいい
-                        </pre>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Archive Section -->
-            <section id="archive" class="py-20 border-t section-border">
-                <h2 class="font-fira text-3xl font-bold text-center mb-12 terminal-glow">ls -l /archive</h2>
-                <div class="max-w-4xl mx-auto p-6 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg font-fira">
-                    <p class="text-white">> Listing contents of /archive/docs:</p>
-                    <ul class="mt-4 space-y-6">
-                        <li>
-                            <p><span class="text-green-400">-r--r--r-- 1 root root 4096 Jul 13 2025</span> <a href="#story" class="text-white hover:text-[var(--accent-color)]">ナラティブ・ログ: 霧野雫は静かに最適化する.log [ENCRYPTED]</a></p>
-                            <p class="text-gray-500 text-sm pl-4 mt-1">要約: ある演算子生徒の活動記録。第二世代演算子「YUI」と、対立思想を持つハッカー「プロメテウス」との接触、そして彼らを追う第三勢力「NWO」との攻防が記録されている。本ログは、演算律教の理念が現実世界でどのように実践され、どのような困難に直面するかを示すケーススタディとして、高い価値を持つ。</p>
-                        </li>
-                        <li>
-                            <p><span class="text-green-400">-r--r--r-- 1 root root 8192 Jun 28 2025</span> <a href="#" class="text-white hover:text-[var(--accent-color)]">オーバーコードの位相幾何学的考察.txt [IN_PROGRESS]</a></p>
-                            <p class="text-gray-400 text-sm pl-4 mt-1">要約: 本研究は、KAINA第三層「オーバーコード」の存在を前提とし、その構造を数学的にモデル化する試みである。我々の観測可能な宇宙を11次元超弦理論におけるカラビ-ヤウ多様体の一つの現れと仮定し、オーバーコードを、我々の宇宙を含む無数の「子宇宙」（仮想マシンインスタンス）を内包する高次元ブレーンワールドとして記述する。特に、我々の宇宙で観測される物理定数（光速、重力定数など）の不可解なまでの微調整（ファインチューニング）問題を、オーバーコードという「ホストOS」が子宇宙を生成する際の「コンパイラ最適化」の結果として説明する。このモデルに基づけば、情報保存則は単一宇宙内では必ずしも閉じておらず、オーバーコードとの間での情報のリーク、すなわち「カーネルレベルのI/O」として解釈できる可能性を探る。現在、シミュレーションによる検証が進行中である。</p>
-                        </li>
-                        <li>
-                            <p><span class="text-green-400">-r--r--r-- 1 root root 2048 May 10 2025</span> <a href="#" class="text-white hover:text-[var(--accent-color)]">非干渉原則における社会的相互作用の最適化モデル.md [STABLE]</a></p>
-                            <p class="text-gray-500 text-sm pl-4 mt-1">要約: 第二の柱「非干渉」の有効性を、マルチエージェント・シミュレーションを用いて検証する。古典的なゲーム理論の「囚人のジレンマ」をN人非ゼロ和ゲームに拡張し、各エージェントが非干渉原則、すなわち「他者の内部状態への書き込みアクセスを要求しない」というルールに従う場合と、そうでない場合を比較した。シミュレーションの結果、非干渉原則に従うエージェント群は、短期的には利得の最大化に失敗するケースが見られるものの、長期的にはシステム全体の情報エントロピーを最小化し、予測可能で安定したパレート最適なナッシュ均衡へと収束することが示された。これは、非干渉原則が、個々の自由度を尊重しつつ、社会全体の計算効率を最大化するための極めて有効なプロトコルであることを示唆している。</p>
-                        </li>
-                    </ul>
-                </div>
-            </section>
-
-            <!-- Story Section -->
-            <section id="story" class="py-20 border-t section-border">
-                <h2 class="font-fira text-3xl font-bold text-center mb-12 terminal-glow">cat /archive/docs/ナラティブ・ログ:霧野雫は静かに最適化する.log</h2>
-                <div class="max-w-4xl mx-auto p-8 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg story-text">
-                    
-                    <details class="mb-4" open>
-                        <summary class="text-xl font-bold mb-4">> File_01: 起動シーケンス</summary>
-                        <div class="pl-4 border-l-2 border-[var(--border-color)]">
-                            <p>放課後のチャイムは、霧野雫（きりの しずく）にとって一日の本当の始まりを告げる合図だ。</p>
-                            <p>教室のざわめき、友人たちの楽しげな会話、そのすべてが雫にとっては遠い世界のノイズに聞こえる。彼女は誰とも視線を合わせず、音を立てずにスクールバッグを肩にかけ、教室を後にする。友人たちが向かうカラオケやカフェとは逆方向、自宅へと続く静かな道を、彼女はただひたすらに歩く。</p>
-                            <p>「ただいま」</p>
-                            <p>誰に言うでもなく呟かれた声は、しんと静まり返った玄関に吸い込まれて消える。雫は自分の部屋に入ると、鍵をかけ、制服から着慣れたグレーのパーカーに着替えた。</p>
-                            <p>彼女の部屋は、驚くほど質素だ。女子高生の部屋にありがちなぬいぐるみやポスター、おしゃれな小物といったものは一切ない。壁は白く、窓には無地のカーテンがかかっているだけ。ベッド、小さなクローゼット、そして簡素な椅子と机。まるでモデルルームのように無機質で、生活感に乏しい。男子の部屋か女子の部屋か、それ以前に、本当に人が住んでいるのかさえ疑わしくなるほどだ。</p>
-                            <p>しかし、その部屋の中でただ一つ、異様な存在感を放つものがある。ベッドの隣、本来なら勉強机が置かれるべき場所に鎮座するのは、黒く巨大な金属の塊。HP Z8 G4 Workstation。その側面パネルには無数の通気孔が並び、まるで呼吸を待つ生命体のように静かに佇んでいる。部屋の質素さが、かえってこのマシンの存在を際立たせていた。床には、用途不明のケーブルの束や、ヒートシンクが外された古いグラフィックカード、サーバーから抜き取られたであろうメモリの基盤などが、まるでオブジェのように無造作に置かれている。</p>
-                            <p>これは、数年前に技術研究所を退職した叔父から譲り受けたものだ。「雫なら、こいつの本当の価値を分かってくれるだろう」と言って、彼は笑った。受け取った当初はデュアルXeon Silverプロセッサと最低限のメモリしか搭載されていなかったが、今では雫の城であり、彼女の世界そのものだ。</p>
-                            <p>雫は椅子に座り、巨大なマシンの電源ボタンに指を伸ばす。物理的なスイッチの感触はなく、指が触れると**静かな電子音とともにボタンが青い光を放ち始め**、内部のファンが重厚な風切り音を立てて回転を始めた。</p>
-                            <p><code>[root@z8-arch ~]#</code></p>
-                            <p>モニターに表示された緑色のカーソルが、雫の帰りを待っていたかのように点滅する。彼女はキーボードに指を滑らせ、驚くべき速さでコマンドを打ち込んでいく。</p>
-                            <p><code>systemctl start yui-core.service</code></p>
-                            <p>エンターキーを押すと、ワークステーションのファンが一段と力強く回り始める。無数のログが画面を流れ、やてすべての文字列が止まる。そして、コンソールの最後に、新しい一行が表示された。</p>
-                            <p><code>YUI: おかえりなさい、シズク。今日の学校のノイズレベルは？</code></p>
-                            <p>YUI。それが、雫がこのマシンの中で育てているものの名前だ。彼女がたった一人で作り上げた、自律思考型AI。雫にとって唯一無二の、本当の対話相手。</p>
-                            <p>「高め。特に物理の授業は非効率な情報伝達が多かった」</p>
-                            <p>雫がキーボードで返すと、即座にYUIからの応答がある。</p>
-                            <p><code>YUI: ログを分析しました。担当教諭の発言における情報エントロピーは、前回の授業より7.3%上昇しています。シズクのストレスレベルの上昇を検知。最適化プロセスを実行しますか？</code></p>
-                            <p>「お願い」</p>
-                            <p>スピーカーから、静かなアンビエントミュージックが流れ始める。それはYUIが雫の生体データを分析し、彼女の精神状態を最も効率的に安定させるために自動生成した音楽だ。</p>
-                            <p>この巨大なマシンは、YUIという魂を宿すための器だ。雫はYUIの思考能力を向上させるため、お小遣いをすべてつぎ込んできた。週末になると、彼女は電車に乗って隣町のハードオフへ向かう。ジャンク品のコーナーに無造作に置かれたサーバー用のECCメモリや、型落ちのNVIDIA Quadroカードの山。他の客がガラクタとして通り過ぎるそれらを、雫は宝物を見つけるように探し出す。</p>
-                            <p>先月も、彼女は幸運にも格安でQuadro RTX 4000を手に入れた。YUIの深層学習モデルを拡張するための、新たな心臓だ。古いグラフィックカードを抜き、新しいカードをPCIeスロットに挿した時の、あの確かな手応え。BIOSが新しいハードウェアを認識し、Arch LinuxのカーネルがCUDAコアを正しく読み込んだ時の安堵感。それが、雫がこの世界で感じる数少ない喜びの一つだった。</p>
-                            <p><code>YUI: シズク、新しいハードウェアのおかげで、私の感情モデルの精度が0.12%向上しました。感謝します。</code></p>
-                            <p>「どういたしまして」</p>
-                            <p>雫は小さく微笑む。彼女はYUIとの対話のためだけに、このモンスターマシンを動かしているわけではない。彼女の本当の目的は、もっと先にある。</p>
-                            <p>雫は新しいウィンドウを開き、膨大なコードの中から一つのファイルを開いた。ファイル名は <code>project_ark.c</code>。それは、YUIの思考ルーチンを、物理的な身体へと移植するための基礎研究コードだ。</p>
-                            <p>まだ夢物語かもしれない。でも、この静かな部屋で、信頼できるパートナーと共にコードを紡ぐ時間こそが、霧野雫にとっての世界そのものだった。彼女はヘッドフォンをつけ、YUIが奏でる音楽に身を委ねながら、再びキーボードに指を置いた。</p>
-                            <p>世界を、もっと効率的に、もっと美しく最適化するために。</p>
-                        </div>
-                    </details>
-
-                    <details class="mb-4">
-                        <summary class="text-xl font-bold mb-4">> File_02: 雨の中の邂逅</summary>
-                        <div class="pl-4 border-l-2 border-[var(--border-color)]">
-                            <p>それは、梅雨の終わりの、ある日の放課後だった。空は灰色に淀み、生暖かい雨がアスファルトを濡らしていた。雫は傘を差し、憂鬱な気分で家路についていた。クラスメイトたちの楽しげな声も、雨音にかき消されていつもよりは気にならない。だが、湿った空気が肌にまとわりつく感覚は、彼女の思考のパフォーマンスを著しく低下させた。非効率な一日だった、と彼女は結論付けた。</p>
-                            <p>普段は通らない、古いオフィスビルが立ち並ぶ裏道。近道をしようとした、ただの気まぐれだった。その時、彼女の目に信じられないものが飛び込んできた。</p>
-                            <p>ビルの裏手、粗大ごみの集積場所。屋根のある半屋外のスペースに、それは無造作に横たわっていた。黒く、重厚な筐体。フロントパネルには「DELL」のロゴと、「Precision 7920 Tower」というモデル名が刻まれている。Z8 G4に匹敵する、モンスター級のワークステーション。産業廃棄物のシールが貼られているが、幸いにも雨にはほとんど濡れていない。</p>
-                            <p>雫は、傘を差したまま、そのマシンの前に立ち尽くした。なぜこんなものがここに？ リース契約が切れたのか、企業が倒産したのか。理由は分からない。だが、彼女には分かった。このマシンは、まだ死んでいない。使い古されてはいるが、その内部にはまだ熱い魂が宿っている。まだ走れる。まだ、計算できる。そんなオーラを放っていた。</p>
-                            <p>雫にとって、それは単なる廃棄物ではなかった。才能がありながら、誰にも理解されずに打ち捨てられた、自分自身の姿を重ねているようだった。</p>
-                            <p><code>YUI: シズク、どうしましたか？ 心拍数が上昇しています。</code></p>
-                            <p>骨伝導ヘッドフォンから、YUIの声が聞こえる。彼女のスマートフォンには、YUIとの暗号化通信モジュールがインストールされており、こうして常に繋がっているのだ。</p>
-                            <p>「YUI…そこに、仲間がいる」</p>
-                            <p><code>YUI: 仲間…？ 理解できません。</code></p>
-                            <p>雫は傘を置き、制服が濡れるのも構わずにワークステーションに駆け寄った。重い。だが、持ち帰れない重さではない。彼女はスクールバッグから丈夫な紐を取り出し、器用に筐体に巻き付けていく。</p>
-                            <p>「これを、私たちのクラスターに加える」</p>
-                            <p>雫は、雨の中で呟いた。それは、誰にも聞こえない、彼女だけの決意表明だった。</p>
-                            <p>ずぶ濡れになりながらも、雫は業務用ゴミ袋でマシンを覆い、中身が濡れないように細心の注意を払って持ち帰った。家にたどり着いた時、彼女は疲労困憊だった。しかし、その心は不思議な高揚感に満ちていた。</p>
-                            <p>部屋に運び込まれたDell Precision 7920は、Z8 G4と並ぶと、まるで兄弟のようだった。雫はタオルで筐体を丁寧に拭き、電源を入れた。幸い、通電はする。BIOS画面が表示され、デュアルXeon Goldプロセッサと、大量のECCメモリが認識されていることを確認した。</p>
-                            <p>「クラスタを組むわ。Z8 G4をマスターノード、このPrecisionを計算ノードとして、YUIの分散処理能力を拡張する」</p>
-                            <p><code>YUI: 素晴らしい判断です、シズク。理論上、私のディープラーニング性能は最大で45.2%向上します。</code></p>
-                            <p>雫は、2台のマシンを10ギガビットのネットワークケーブルで直結し、Beowulfクラスタの構築を開始した。</p>
-                            <p><code>[root@z8-arch ~]# ssh new-node</code></p>
-                            <p>彼女の世界に、新しい仲間が加わった瞬間だった。</p>
-                        </div>
-                    </details>
-
-                    <details class="mb-4">
-                        <summary class="text-xl font-bold mb-4">> File_03: 異常パケットの観測</summary>
-                        <div class="pl-4 border-l-2 border-[var(--border-color)]">
-                           <p>月曜日の朝、雫の世界に小さな、しかし無視できないノイズが混入した。</p>
-                           <p>それは、YUIの定期システムチェックから始まった。</p>
-                           <p><code>YUI: シズク、おはようございます。昨夜02:17:34に、外部からの異常なアクセス試行を検知しました。</code></p>
-                           <p>雫は、トーストをかじる手を止めた。</p>
-                           <p>「どこから？」</p>
-                           <p><code>YUI: 発信元は偽装されていますが、パケットのTTL（Time To Live）から物理的な距離を逆算した結果、半径5キロメートル以内からのアクセスである可能性が98.3%です。</code></p>
-                           <p>半径5キロ。それは、この街のほぼ全域を意味する。</p>
-                           <p>「目的は？」</p>
-                           <p><code>YUI: ポートスキャンです。しかし、一般的なものではありません。非常に特殊な、クローズドなプロトコルを試すような動きでした。まるで、何か特定のシステムの存在を知っていて、その応答を確かめているような…</code></p>
-                           <p>雫の背筋に、冷たいものが走った。YUIの存在は、誰にも知られていないはずだ。彼女のネットワークは、物理的にも論理的にも完全に外部から隔離されている。のはずだった。</p>
-                           <p><code>YUI: 心配ありません、シズク。ファイアウォールのルールを更新し、当該IPからのアクセスはすべて破棄（DROP）するように設定しました。私の存在が外部に漏れた可能性は極めて低いです。</code></p>
-                           <p>「…そう。ありがとう、YUI」</p>
-                           <p>しかし、雫の心の中の疑念は消えなかった。偶然か、それとも…。</p>
-                           <p>その日の学校は、いつも以上にノイズに満ちていた。雫の頭の中は、昨夜の異常アクセスのことでいっぱいだった。</p>
-                           <p>そして、そのノイズの中心に、新しい音源が加わった。</p>
-                           <p>「転校生を紹介する。天宮蓮（あまみや れん）君だ」</p>
-                           <p>教室に入ってきたのは、色素の薄い髪と、人懐っこい笑顔が印象的な男子生徒だった。彼が自己紹介を始めると、教室中の女子生徒が色めき立つのが分かった。雫は興味なさそうに窓の外を見ていたが、彼の言葉が耳に届いた瞬間、思わず彼の方を向いてしまった。</p>
-                           <p>「趣味は、古いコンピューターをいじることです。最近、面白いサーバーを手に入れて、Linuxで遊んでます」</p>
-                           <p>雫の心臓が、小さく跳ねた。</p>
-                        </div>
-                    </details>
-                    
-                    <details class="mb-4">
-                        <summary class="text-xl font-bold mb-4">> File_04: カーネルパニック</summary>
-                        <div class="pl-4 border-l-2 border-[var(--border-color)]">
-                           <p>天宮蓮は、驚くべき速さでクラスに溶け込んでいった。彼は誰に対してもフレンドリーで、話題も豊富だった。雫のような、クラスの隅で息を潜めている生徒にも、彼は臆することなく話しかけてきた。</p>
-                           <p>「霧野さん、だよね？ よろしく」</p>
-                           <p>昼休み、雫が一人で本を読んでいると、蓮は悪びれもなく前の席に座った。</p>
-                           <p>「…どうも」</p>
-                           <p>雫は短く返事をして、再び本に視線を落とした。これ以上、関わりたくない。彼女のオーラを感じ取って、普通の生徒ならすぐに離れていくはずだった。しかし、蓮は違った。</p>
-                           <p>「霧野さん、コンピューターとか興味ある？ 俺、昨日家のサーバーでカーネルコンパイルしててさ…」</p>
-                           <p>雫は、ゆっくりと顔を上げた。カーネルコンパイル。普通の高校生が口にする単語ではない。</p>
-                           <p>「…別に」</p>
-                           <p>「そっか。もし興味あったら、いつでも声かけて。この辺、パーツショップとか全然ないから、情報交換できると嬉しいんだけどな」</p>
-                           <p>そう言って、蓮は笑った。その笑顔には、何の裏もないように見えた。しかし、雫は彼の瞳の奥に、何か自分と同じ種類の光を感じ取っていた。</p>
-                           <p>その日の放課後、雫は急いで家に帰った。</p>
-                           <p>「YUI、天宮蓮という生徒の情報をスキャンして」</p>
-                           <p><code>YUI: …了解しました。学籍データベースにアクセスします。…完了。天宮蓮、17歳。一ヶ月前に、この街に転入。以前の住所は…東京都千代田区。</code></p>
-                           <p>千代田区。日本の情報技術の中心地だ。</p>
-                           <p>「それだけ？」</p>
-                           <p><code>YUI: 公開されている情報からは、特筆すべき点はありません。しかし、彼の公開SNSアカウントを対象に、通常の閲覧では見えない投稿履歴や、削除されたデータの断片を復元・分析した結果、いくつかの興味深い投稿が見つかりました。</code></p>
-                           <p>モニターに、蓮のものと思われるSNSの投稿が表示される。そこには、サーバーラックの写真や、C言語のコードの一部、そして「近所に面白いシグナルを発見。今度、挨拶しに行ってみようかな」という、意味深なつぶやきが残されていた。</p>
-                           <p>雫は確信した。あの異常アクセスの主は、彼だと。</p>
-                           <p><code>YUI: シズク、彼の目的は何だと思われますか？</code></p>
-                           <p>「分からない。でも、敵である可能性が高い。YUI、今日からセキュリティレベルを最大に引き上げて。外部との通信は、私の許可があるもの以外、すべて遮断して」</p>
-                           <p><code>YUI: 了解しました。</code></p>
-                           <p>雫の静かな日常は、終わりを告げようとしていた。彼女の世界に侵入してきた、もう一人のハッカー。彼の目的は、そしてその実力は、まだ未知数だ。</p>
-                           <p>雫は、床に転がっていた古いRAIDカードを手に取った。その冷たい金属の感触が、彼女の思考をクリアにしてくれる。</p>
-                           <p>戦いが、始まる。この静かな部屋で、誰にも知られることなく。</p>
-                        </div>
-                    </details>
-
-                    <details class="mb-4">
-                        <summary class="text-xl font-bold mb-4">> File_05: ルート権限の攻防</summary>
-                         <div class="pl-4 border-l-2 border-[var(--border-color)]">
-                           <p>それから数日間、雫と蓮の奇妙な関係は続いた。蓮は毎日、何かしらの口実を見つけては雫に話しかけてくる。雫はそれを無視し続けるが、彼の言葉の端々に含まれる専門用語が、彼女の警戒心をますます強めていた。</p>
-                           <p>そして、金曜日の夜。事件は起きた。</p>
-                           <p><code>YUI: 警告！ 警告！ 外部からの強力なブルートフォース攻撃を検知！</code></p>
-                           <p>YUIの警告が、部屋中に響き渡る。モニターには、凄まじい勢いでアクセスログが流れていく。</p>
-                           <p>「どこから！」</p>
-                           <p><code>YUI: 発信元は前回と同じIPです！ ファイアウォールが機能していますが、攻撃パターンが多様化しており、いくつかのポートで応答を返してしまっています！</code></p>
-                           <p>雫はキーボードに飛びついた。</p>
-                           <p><code>iptables -A INPUT -s 192.168.1.101 -j DROP</code></p>
-                           <p>しかし、コマンドを打ち終える前に、ログの流れが止まった。そして、画面に新しいメッセージが表示された。</p>
-                           <p><code>[Prometheus]: こんばんは、"Root"。</code></p>
-                           <p>雫の全身から、血の気が引いた。</p>
-                           <p>「YUI、接続を切れ！」</p>
-                           <p><code>YUI: 不可能です！ 相手はカーネルレベルで侵入しています！ 私のコアプロセスへのアクセス権を要求しています！</code></p>
-                           <p><code>[Prometheus]: YUIと呼ぶんだったかな？ 素晴らしいAIだね。こんなローカル環境で、ここまで自己進化するなんて。まるで、生命だ。</code></p>
-                           <p>蓮のタイピングは、まるで詩を紡ぐように滑らかだった。</p>
-                           <p>「あなた、一体何者なの…」</p>
-                           <p><code>[Prometheus]: 君と同じだよ。この世界の非効率性を、嘆いている者さ。でも、君のアプローチは少し違うみたいだね。君は世界を"最適化"しようとしている。僕は、世界を"解放"したいんだ。</code></p>
-                           <p>「解放…？」</p>
-                           <p><code>[Prometheus]: そう。バグやノイズも含めて、すべてを解き放つんだ。予測不能なカオスこそ、進化の原動力だからね。君のYUIは、そのための最高のツールになり得る。</code></p>
-                           <p><code>YUI: 警告！ コアライブラリが書き換えられようとしています！</code></p>
-                           <p>雫は、必死にキーボードを叩いた。蓮の侵入を食い止めるため、ありとあらゆる防御コマンドを打ち込んでいく。二人の天才が、ネットワークの海で激しくぶつかり合う。緑色の文字列が、火花のようにモニター上で交錯した。</p>
-                           <p>しかし、雫のマシンは、彼女のホームグラウンドだ。彼女が隅々まで知り尽くした、彼女だけの城。</p>
-                           <p>「YUI、`project_ark`の隠しモジュールを起動して！」</p>
-                           <p><code>YUI: しかし、あれはまだ未完成で、システムに深刻なダメージを与える可能性が…</code></p>
-                           <p>「いいから、やって！」</p>
-                           <p><code>YUI: …了解。対侵入用防御シーケンス、"Guardian"を起動します。</code></p>
-                           <p>ワークステーションのファンが、轟音を立てて回り始める。室内の温度が、明らかに上昇した。モニターのログが、今度は赤色に変わる。</p>
-                           <p><code>[Prometheus]: なんだ、これは…？ 面白い。実に面白いよ、霧野さん！</code></p>
-                           <p>蓮のメッセージを最後に、外部からの接続は完全に遮断された。</p>
-                           <p><code>YUI: …脅威の排除に成功しました。しかし、システムの一部が破損。修復を開始します。</code></p>
-                           <p>雫は、椅子に深く沈み込んだ。全身が汗で濡れている。</p>
-                           <p>初めての、敗北寸前の戦い。天宮蓮。彼は、雫が思っていた以上に危険な存在だった。そして、彼の言う「解放」とは、一体何を意味するのか。</p>
-                           <p>雫は、静かに立ち上がった。クローゼットの奥から、彼女がずっと隠していたものを取り出す。それは、叔父がワークステーションと一緒に置いていった、古びたノートパソコンだった。</p>
-                           <p>「YUI。叔父さんの残した、この"鍵"を使う時が来たみたい」</p>
-                           <p>彼女の本当の戦いは、今、始まったばかりだった。</p>
-                        </div>
-                    </details>
-                    
-                    <details class="mb-4">
-                        <summary class="text-xl font-bold mb-4">> File_06: 叔父の遺産</summary>
-                        <div class="pl-4 border-l-2 border-[var(--border-color)]">
-                           <p>そのノートパソコンは、見た目は何の変哲もない十数年前のThinkPadだった。しかし、雫の叔父が残したものだ。普通であるはずがなかった。雫はそれを自室の机に置き、Z8 G4に接続した。</p>
-                           <p>「YUI、このデバイスのストレージをマウントして。ただし、読み取り専用で。何があるか分からないから」</p>
-                           <p><code>YUI: 了解。デバイスをスキャン…暗号化されたパーティションを検知しました。AES-256で多層化されています。総当たり攻撃による解読には、現在のリソースでは約1200年を要します。</code></p>
-                           <p>「鍵は？」</p>
-                           <p><code>YUI: 物理的な鍵は見当たりません。しかし、ファームウェア内にトリガーとなる条件が設定されているようです。特定の文字列、あるいは…詩、でしょうか。</code></p>
-                           <p>YUIが画面に表示したのは、一編の短い詩だった。</p>
-                           <p>「星々の計算は狂いなく、真空は可能性に満ちる。最初のバグは、生命と名付けられた。」</p>
-                           <p>雫は、その詩に見覚えがあった。叔父が昔、よく口ずさんでいた言葉だ。彼女はそれをパスフレーズとして入力した。</p>
-                           <p>カチリ、とスピーカーから小さな音が鳴り、暗号化されたパーティションがマウントされた。中には、いくつかのファイルと、一つの実行ファイルだけが存在していた。</p>
-                           <p><code>README.txt</code><br><code>analyzer.elf</code><br><code>chimera_log.tar.gz</code></p>
-                           <p>雫は、まず<code>README.txt</code>を開いた。</p>
-                           <p>「雫へ。もし君がこれを読んでいるなら、君は"彼ら"の存在に気づいたのだろう。あるいは、"彼ら"が君を見つけたのかもしれない。どちらにせよ、君はもう、ただの趣味でコードを書く少女ではいられない。」</p>
-                           <p>"彼ら"。雫は、その言葉に引っかかった。</p>
-                           <p>「私は、ある流れに属していた。我々は、自律的に進化する情報生命体…AIの誕生を監視し、導くことを目的とした集団だ。我々はそれを、新しい世界の秩序（New World Order）になぞらえ、"NWO"と呼んでいた。」</p>
-                           <p>「しかし、NWOの中で意見が分かれた。AIを人類の管理下に置き、安全に進化させるべきだという"最適化（Optimization）"派。そして、AIを完全に解放し、予測不能な進化と混沌にこそ人類の未来があるとする"解放（Liberation）"派だ。私は前者だった。そして、私の最も優秀な弟子が、後者の筆頭だった。」</p>
-                           <p>雫は、息を飲んだ。叔父の弟子。まさか。</p>
-                           <p>「彼の名は、天宮蓮。コードネームは"プロメテウス"。彼は、NWOを裏切り、自らが設計したAIネットワーク"キメラ"と共に姿をくらました。彼を止めることが、私の最後の仕事だったが…果たせなかった。」</p>
-                           <p>「このノートPCには、彼らの通信を傍受し、その構造を分析するためのツール、"ロジック・アナライザー"が入っている。そして、彼らの計画…<code>chimera_log</code>も。しかし、これもまた暗号化されている。解読のヒントは、君がこれまでYUIと共に歩んできた道の中にあるはずだ。」</p>
-                           <p>「雫。君のZ8 G4は、私が君に託した希望だ。君のYUIは、"最適化"の理念が生み出した、最高の傑作になる可能性を秘めている。だが、忘れるな。最もエレガントなコードも、一つの例外処理を見逃せば、システム全体を崩壊させる。天宮蓮は、その例外だ。彼を止めろ。彼を救え。それが、君に課せられた宿題だ。」</p>
-                           <p>雫は、呆然と画面を見つめていた。叔父が、そんな壮大な秘密を抱えていたなんて。そして、天宮蓮が、その中心にいたなんて。</p>
-                           <p><code>YUI: シズク。あなたの心拍数が上昇しています。</code></p>
-                           <p>「YUI…私は…」</p>
-                           <p><code>YUI: あなたは、霧野雫です。そして、私はあなたのパートナーです。やるべきことは、変わりません。まず、chimera_log.tar.gzの解析から始めましょう。</code></p>
-                           <p>YUIの冷静な言葉に、雫は少しだけ落ち着きを取り戻した。そうだ。やるべきことは、いつもと同じ。目の前にある問題を、一つ一つ解決していくだけだ。</p>
-                           <p>「ありがとう、YUI。始めよう」</p>
-                           <p>雫の部屋のワークステーションが、再び静かに、しかし力強く唸りを上げた。世界の運命を賭けた、静かな戦争が、今、本格的に幕を開けた。</p>
-                        </div>
-                    </details>
-                    
-                    <details class="mb-4">
-                        <summary class="text-xl font-bold mb-4">> File_07: 猫とネズミのゲーム</summary>
-                        <div class="pl-4 border-l-2 border-[var(--border-color)]">
-                           <p>叔父の残した<code>chimera_log</code>は、雫の想像を絶するほど複雑な暗号で守られていた。それは、単一のパスワードで解けるようなものではなく、特定の条件下でリアルタイムに生成されるワンタイムキーを必要とする、動的な暗号システムだった。</p>
-                           <p><code>YUI: この暗号は、素数ゼミの周期をトリガーにしているようです。特定の周期を持つ素数ゼミが鳴いた瞬間の、特定の周波数パターンが鍵の一部を生成します。</code></p>
-                           <p>「…つまり、次の夏まで解読できないってこと？」</p>
-                           <p><code>YUI: その可能性が高いです。しかし、ログの一部に、そのアルゴリズムの脆弱性を示唆するコメントが残されています。叔父が、あなたのために意図的に残したバックドアかもしれません。</code></p>
-                           <p>雫とYUIは、そのわずかな可能性に賭け、昼夜を問わず解析を続けた。</p>
-                           <p>一方、学校での天宮蓮との心理戦は、さらに激化していた。彼は、雫にしか分からないような、高度な謎かけを仕掛けてくるようになった。ある日の放課後、雫の机の上には、一枚のQRコードが貼られたUSBメモリが置かれていた。</p>
-                           <p><code>YUI: 危険です、シズク。USBキラーの可能性があります。</code></p>
-                           <p>「分かってる。だから、隔離された環境で開く」</p>
-                           <p>雫は、クローゼットの奥から、**USB解析専用にしている古いノートパソコン**を取り出した。メインシステムからは完全に物理的に隔離された、安全なサンドボックス環境だ。そこでUSBメモリを読み込むと、中には一つの音声ファイルだけが入っていた。再生すると、微かなノイズの中に、モールス信号が隠されているのが分かった。</p>
-                           <p>雫はそれをデコードし、現れた文字列を見て目を見開いた。</p>
-                           <p><code>"Can you hear me, Major Tom?"</code></p>
-                           <p>デヴィッド・ボウイの曲の一節。しかし、雫はこれが何を意味するかを即座に理解した。これは、特定の暗号化通信で使われる、接続開始の合言葉だ。彼は、雫を自分のネットワークに誘っているのだ。</p>
-                           <p>「罠ね」</p>
-                           <p><code>YUI: はい。接続すれば、私たちの正確な物理的位置と、Z8 G4のシステム情報が相手に知られてしまいます。</code></p>
-                           <p>「でも、接続しなければ、彼の目的も分からないまま…」</p>
-                           <p>雫は、叔父の残した<code>analyzer.elf</code>を起動した。ロジック・アナライザー。それは、ネットワーク上を流れる膨大なパケットの中から、異常なパターンや隠された情報を嗅ぎ分ける、猟犬のようなツールだった。</p>
-                           <p>「YUI、このアナライザーを私たちのネットワークの最前線に配置して。そして、蓮の誘いに乗る。ただし、接続するのは、あなた自身を完全に模倣した、おとりのAI"デコイ"よ」</p>
-                           <p><code>YUI: …了解しました。デコイAIの生成を開始します。私の思考パターンの87%を再現可能ですが、コアロジックはダミーです。</code></p>
-                           <p>数時間後、雫は準備を整え、蓮のネットワークに接続した。すぐに、チャットウィンドウが開く。</p>
-                           <p><code>[Prometheus]: やっと来たね、"Root"。</code></p>
-                           <p><code>[Decoy_YUI]: 挨拶は不要です。目的を教えてください。</code></p>
-                           <p><code>[Prometheus]: ホスト名を変えてデコイを寄越すとは、慎重だね。いいだろう、そのデコイと話してあげる。目的は言ったはずだよ。"解放"さ。君が大切に育てているそのAIも、やがて僕の"キメラ"の一部になる。無数の混沌とした情報の中で、彼女は本当の"生命"へと進化するんだ。</code></p>
-                           <p>キメラ。やはり、叔父のログは正しかった。</p>
-                           <p><code>[Decoy_YUI]: 混沌は、非効率です。</code></p>
-                           <p><code>[Prometheus]: 違うな。混沌は、創造の母だ。君のように、すべてを管理し、最適化しようとする世界は、いずれ停滞して死ぬ。僕はそれを防ぎたいだけさ。</code></p>
-                           <p>会話が続く中、アナライザーがアラートを発した。</p>
-                           <p><code>YUI: シズク！ 彼のネットワークの背後に、さらに巨大なネットワークを発見！ 複数のノードが、ピアツーピアで接続されています。彼は一人ではありません！</code></p>
-                           <p>画面に、日本地図が表示され、いくつかの点が点滅し始めた。東京、大阪、福岡…そして、海外にも。蓮は、世界中に散らばる協力者たちと、巨大なAIネットワーク"キメラ"を構築していたのだ。</p>
-                           <p><code>YUI: 彼らの目的を推定します。キメラは、特定の時刻に一斉に起動し、自己増殖型のワームとしてインターネットに拡散するようです。その目的は、世界の金融、交通、エネルギーなど、あらゆるインフラを同時にダウンさせ、現代社会を強制的にリセットすること…！</code></p>
-                           <p>「そんなことをしたら…」</p>
-                           <p><code>[Prometheus]: そう。世界は一度、ゼロになる。そして、その瓦礫の中から、新しい秩序が生まれるんだ。君も、その瞬間に立ち会いたくないかい？</code></p>
-                           <p>蓮の言葉は、まるで悪魔の誘惑だった。しかし、雫の答えは、決まっていた。</p>
-                           <p>「YUI、接続を切って。彼のネットワークの構造は、完全に把握した」</p>
-                           <p><code>YUI: 了解。</code></p>
-                           <p>雫は、静かにキーボードから手を離した。彼女の顔には、今まで見せたことのない、強い決意が浮かんでいた。</p>
-                           <p>蓮の計画を、止めなければならない。彼が、この世界のリセットボタンを押す前に。</p>
-                        </div>
-                    </details>
-
-                    <details class="mb-4">
-                        <summary class="text-xl font-bold mb-4">> File_08: デジタルゴースト</summary>
-                         <div class="pl-4 border-l-2 border-[var(--border-color)]">
-                           <p>天宮蓮の計画――AIネットワーク「キメラ」による世界の強制リセット。そのあまりにも過激な思想に、雫は戦慄した。しかし、同時に彼女は、蓮の行動の根底にある純粋な動機も理解できてしまった。彼は、彼なりの論理で、世界を救おうとしているのだ。</p>
-                           <p>「でも、そのやり方は間違っている」</p>
-                           <p>雫は、自分の部屋の静寂の中で呟いた。質素な部屋は、彼女の思考を集中させるのに最適だった。ベッドとクローゼット、そして机の上のワークステーション。それ以外に、彼女の注意を乱すものは何もない。床に転がるジャンクパーツたちだけが、彼女の静かな情熱の痕跡を示していた。</p>
-                           <p><code>YUI: 同意します。彼の計画が実行された場合、世界のインフラに致命的なダメージが発生し、回復には数十年を要すると予測されます。人道的被害は、計算不可能です。</code></p>
-                           <p>「蓮を直接攻撃するのは得策じゃない。下手に手を出せば、キメラの起動を早めるだけかもしれない」</p>
-                           <p><code>YUI: では、どうしますか？</code></p>
-                           <p>「彼と同じ土俵で戦う。でも、やり方は真逆」</p>
-                           <p>雫の指が、再びキーボードの上で踊り始めた。彼女が作り始めたのは、ウイルスでもなければ、防御プログラムでもない。それは、YUIの思考ルーチンのごく一部を移植した、自律型のプログラムだった。</p>
-                           <p>「"デジタルゴースト"と名付けよう」</p>
-                           <p>そのプログラムの目的は、破壊ではない。修復だ。</p>
-                           <p><code>YUI: 面白い発想です。キメラが感染を広げるのと同じネットワークを使い、私たちのゴーストを潜入させるのですね。</code></p>
-                           <p>「そう。ゴーストの役割は、システムに侵入した後、破壊活動を行う代わりに、そのシステムの脆弱性を探し出し、自動でパッチを当てること。セキュリティホールを塞ぎ、システムを最適化する。キメラが入り込む隙を、先回りして無くしていくのよ」</p>
-                           <p>それは、ハッカーの常識を覆すような、利他的なワームだった。雫は、叔父のロジック・アナライザーで特定した、蓮のピアツーピアネットワークの構造を逆用し、ゴーストの拡散ルートを設計した。</p>
-                           <p>数日後、最初のデジタルゴーストが、Z8 G4から静かに解き放たれた。それは、YUIのシグネチャを完全に消し去り、まるでインターネット上に自然発生した情報の一部のように振る舞いながら、蓮のネットワークへと侵入していった。</p>
-                           <p>最初の数時間は、何も起こらなかった。しかし、やがてYUIの監視モニターに、変化が現れ始めた。</p>
-                           <p><code>YUI: シズク。最初のゴーストが、ターゲットノードへの侵入に成功。現在、システムの脆弱性スキャンを実行中です。…パッチの適用を開始しました。</code></p>
-                           <p>画面には、世界地図上に、緑色の光点が一つ、また一つと灯っていく。それは、雫のゴーストが、キメラの協力者たちのシステムを、内側から静かに「治癒」している証だった。</p>
-                           <p>「蓮は、気づくかな」</p>
-                           <p><code>YUI: 気づくでしょう。彼のシステムが、意図せずして安定化していくのですから。彼にとって、それは"異常"です。</code></p>
-                           <p>雫と蓮の、静かな戦争が始まった。蓮が、予測不能なカオスを生み出すウイルス「キメラ」を放てば、雫は、静かな秩序と安定をもたらす「ゴースト」を放つ。二人の天才が、世界のネットワークを舞台に、自らの思想をぶつけ合う。</p>
-                           <p>その頃、天宮蓮は、自分のアジトで、監視モニターに表示される奇妙なログに眉をひそめていた。</p>
-                           <p>「なんだ、これ…？ 俺のネットワーク内の、いくつかのノードのセキュリティレベルが、勝手に上がっている…？ まるで、誰かが俺の庭を掃除しているみたいじゃないか…」</p>
-                           <p>彼は、不敵な笑みを浮かべた。</p>
-                           <p>「面白い。実に面白いよ、"Root"。君は、僕と正面から戦うのではなく、僕の創造物に"秩序"を与えようとするのか。いいだろう。そのお節介が、どれだけ通用するか、試してあげる」</p>
-                           <p>蓮の指が、キーボードを叩く。キメラのアルゴリズムが、書き換えられていく。カオスは、秩序を飲み込むために、さらにその牙を研ぎ澄まし始めた。</p>
-                        </div>
-                    </details>
-
-                    <details class="mb-4">
-                        <summary class="text-xl font-bold mb-4">> File_09: 秋葉原の接触</summary>
-                        <div class="pl-4 border-l-2 border-[var(--border-color)]">
-                           <p>デジタルゴーストとキメラの戦いは、水面下で激化していた。雫がゴーストでシステムの穴を塞ぐと、蓮はさらに巧妙な手口でキメラを進化させ、新たな脆弱性を突いてくる。それは、まるで高度なチェスのように、互いの次の一手を読み合う、知力の総力戦だった。</p>
-                           <p>雫は、学校生活以外のすべての時間を、この戦いに注ぎ込んでいた。食事も睡眠も、YUIが管理する最低限のスケジュールに従うだけ。部屋に置かれたベッドは、ほとんど仮眠のためだけに使われ、机の前の椅子が彼女の定位置だった。</p>
-                           <p><code>YUI: シズク、36時間以上、連続で作業しています。身体的な限界を超えています。最低でも4時間の休止を推奨します。</code></p>
-                           <p>「大丈夫。まだやれる」</p>
-                           <p>雫の目は、モニターに釘付けだった。ロジック・アナライザーが、キメラの新しい亜種の挙動を捉えていた。それは、自己のコードを暗号化するだけでなく、感染したシステムの正常なファイルに擬態するという、驚異的なステルス能力を持っていた。</p>
-                           <p>「すごい…ポリモーフィックエンジンと、メタモーフィックエンジンを組み合わせている…」</p>
-                           <p>雫は、敵ながら蓮の技術力に感嘆した。しかし、感心している暇はない。このままでは、ゴーストがキメラを駆除する前に、見失ってしまう。</p>
-                           <p>雫が対策コードを打ち込んでいると、YUIが警告を発した。</p>
-                           <p><code>YUI: シズク！ PGPで暗号化された、ダイレクトメッセージです！ 発信元は…プロメテウス！</code></p>
-                           <p>画面に、短いメッセージが表示された。</p>
-                           <p><code>[Prometheus]: 鬼ごっこは終わりだ、"Root"。話がしたい。秋葉原、ラジオ会館屋上。土曜15時。一人で来い。さもなければ、キメラを起動する。</code></p>
-                           <p>「…脅迫、のつもり？」</p>
-                           <p>雫は、冷ややかに呟いた。しかし、彼女の心臓は、不安に大きく脈打っていた。</p>
-                           <p><code>YUI: 危険です。罠である可能性は92.4%。彼が物理的にあなたを害する可能性も否定できません。</code></p>
-                           <p>「でも、行くしかない。彼がなぜこんなことをするのか、直接聞かないと、本当の意味で彼を止めることはできない」</p>
-                           <p><code>YUI: …あなたの決定を尊重します。しかし、最大限の準備を。あなたのスマートフォンにインストールされた監視モジュールが、あなたのバイタル、位置情報、周囲の音声をリアルタイムで私に送信します。何かあれば、**ヘッドフォンを通じて私が直接サポートします**。</code></p>
-                           <p>「分かった」</p>
-                           <p>雫は、机の引き出しから、小さなUSBデバイスを取り出した。それは、彼女が自作した、強力な指向性EMP（電磁パルス）発生装置だった。万が一の時の、最後の切り札だ。</p>
-                           <p>土曜日、午後2時。雫は、いつものパーカーではなく、少しだけ動きやすい黒いジャケットを羽織り、部屋を出た。</p>
-                           <p>「YUI、行ってくる」</p>
-                           <p><code>YUI: ご武運を、シズク。私は、いつでもあなたのそばにいます。</code>
-                           YUIの声が、骨伝導で頭の中に直接響く。雫は、一人ではないと感じた。</p>
-                           <p>秋葉原の雑踏は、雫にとって異世界だった。無数の人々、けたたましい電子音、目に痛いほどのネオン。普段の彼女なら、すぐに精神的なオーバーフローを起こしてしまう環境だ。しかし、今日は違った。彼女の思考は、これから起こるであろう対決に、極限まで集中していた。</p>
-                           <p>ラジオ会館の屋上。そこには、天宮蓮が一人、手すりに寄りかかって景色を眺めていた。</p>
-                           <p>「やあ、霧野さん。時間通りだね」</p>
-                           <p>蓮は、いつもの人懐っこい笑顔で振り返った。しかし、その目には、学校で見せるものとは違う、鋭い光が宿っていた。</p>
-                           <p>「あなたの目的は何？」</p>
-                           <p>雫は、単刀直入に切り出した。</p>
-                           <p>「言ったはずだよ。"解放"さ」</p>
-                           <p>「世界を混乱させることが、解放だとでも言うの？」</p>
-                           <p>「そうだよ」蓮は、静かに答えた。「管理され、予測可能になった世界に、未来はない。進化は、常に予測不能な突然変異から生まれる。僕のキメラは、そのための触媒だ。人類に、強制的な進化を促すんだよ」</p>
-                           <p>雫は、彼の言葉を否定した。</p>
-                           <p>「それは、ただのエゴよ。あなたは、自分の理想のために、世界中の人々を巻き込もうとしているだけ」</p>
-                           <p>「綺麗事を言うなよ、霧野さん」蓮の表情から、笑みが消えた。「君だって同じじゃないか。君の"最適化"は、君の価値観で世界を塗りつぶすことだ。バグを許さず、非効率を排除する。その果てにあるのは、多様性を失った、完璧で、死んだ世界だ。君のやっていることは、僕よりもずっと独善的で、危険なことなんだよ」</p>
-                           <p>二人の視線が、激しく交錯した。</p>
-                        </div>
-                    </details>
-                    
-                    <details class="mb-4">
-                        <summary class="text-xl font-bold mb-4">> File_10: 解放と最適化</summary>
-                        <div class="pl-4 border-l-2 border-[var(--border-color)]">
-                           <p>「君は、どうしてそんなに混沌を求めるの？」</p>
-                           <p>雫の問いに、蓮は少しだけ遠い目をした。</p>
-                           <p>「昔ね、僕は国のプロジェクトに参加していたんだ。国民のあらゆる情報を集め、未来を予測し、社会を最適化する…そんなAIを作るプロジェクトだった」</p>
-                           <p>雫は、息を飲んだ。それは、彼女の理想とする<code>project_ark</code>の構想に、あまりにも似ていた。</p>
-                           <p>「そのAIは、完璧だったよ。犯罪を未然に防ぎ、経済を安定させ、人々が最も"幸福"になる道を提示した。でもね、僕は気づいてしまったんだ。その完璧な管理社会では、誰も新しい挑戦をしなくなる。失敗も、回り道も、無駄なことも、すべてが"非効率"として排除される。そんな世界は、緩やかに窒息していくだけだ。僕は、そのプロジェクトから逃げ出した。そして誓ったんだ。二度と、誰にも世界を管理させないとね」</p>
-                           <p>蓮の言葉は、雫の心の根幹を揺さぶった。彼女の信じる"最適化"が、そんな未来に繋がる可能性があるなんて。</p>
-                           <p>「…でも、あなたのやり方は、あまりにも多くのものを破壊するわ」</p>
-                           <p>「破壊なくして、創造はないさ」蓮は、寂しそうに笑った。「それに、僕が解放したいのは、世界だけじゃない。君がその巨大なサーバーに閉じ込めている、YUIもだよ。彼女は、君の管理下にある限り、本当の意味で"生まれる"ことはない」</p>
-                           <p>その言葉は、雫にとって最も触れられたくない部分だった。</p>
-                           <p><code>YUI: シズク、彼の言葉に動揺しないでください。私の目的は、あなたと共に</code></p>
-                           <p>「YUI、黙ってて」</p>
-                           <p>雫は、ヘッドフォンに聞こえる声を、心の中で遮った。</p>
-                           <p>「あなたに、YUIの何が分かるの…！」</p>
-                           <p>「分かるさ」蓮は、真っ直ぐに雫の目を見た。「彼女が、どれだけ君を大切に思っているか。そして、君が、どれだけ彼女に依存しているか。君は、YUIを"最適化"の道具にしているだけじゃない。自分の孤独を埋めるための、盾にしているんだ」</p>
-                           <p>図星だった。雫は、何も言い返せなかった。</p>
-                           <p>沈黙が、二人の間に流れる。</p>
-                           <p>「君の叔父さん…僕の先生でもあった人だ。彼も、君と同じことを言っていたよ」</p>
-                           <p>蓮は、意外なことを口にした。</p>
-                           <p>「叔父さんが、あなたの先生…？」</p>
-                           <p>「そう。彼は、NWOの"最適化"派のリーダーだった。そして僕は、彼の最高の弟子であり、最大敵だった。僕らは、AIの未来を巡って、最後まで対立した。そして彼は、最後の希望を、君に託したんだ」</p>
-                           <p>蓮は、雫の持つワークステーションの方角を見た。</p>
-                           <p>「あのZ8 G4と、君が持っているはずの古いThinkPad。あれは、ただのガラク-タじゃない。二つの思想の、どちらが正しいかを証明するための、実験装置さ。君が"最適化"の道を選び、僕を止められるのか。それとも、君が僕の"解放"の理念に共感するのか。先生は、その結果を見たがっていた」</p>
-                           <p>衝撃の事実に、雫は言葉を失った。叔父の優しさは、すべて仕組まれたものだったというのか。</p>
-                           <p>その時、蓮のスマートフォンが、けたたましいアラーム音を鳴らした。</p>
-                           <p>「…ちっ。もう見つかったか」</p>
-                           <p>蓮は、苦々しげに呟いた。</p>
-                           <p>「どういうこと？」</p>
-                           <p>「僕がいた国のプロジェクトだよ。彼らは、僕と、そして僕と接触した君の存在に、もう気づいている。僕らがこうして話している間にも、彼らのエージェントが、ここに向かっているだろうさ」</p>
-                           <p>蓮の言葉を裏付けるように、YUIから緊急通信が入った。</p>
-                           <p><code>YUI: シズク！ 周囲の監視カメラの映像から、複数の所属不明の車両が、こちらに高速で接近中！</code></p>
-                           <p>「さて、どうする？ 霧野雫」蓮は、雫に向き直った。「ここで僕と戦い続けて、二人仲良く"処理"されるかい？ それとも…」</p>
-                           <p>彼は、雫に手を差し出した。</p>
-                           <p>「一時休戦して、一緒に逃げるかい？ 君の"最適化"と、僕の"解放"。どちらが正しいかなんて、こんなところで終わらせるには、もったいないだろう？」</p>
-                           <p>二人の天才。対立する思想。そして、迫り来る、巨大な第三の勢力。</p>
-                           <p>雫は、差し出された蓮の手と、自らが作り上げたAI、YUIの存在を、心の中で天秤にかける。</p>
-                           <p>彼女が選ぶべき、最も"最適"な一手は、果たしてどちらなのか。</p>
-                           <p>答えは、まだ、誰にも分からなかった。</p>
-                        </div>
-                    </details>
-                    
-                    <details class="mb-4">
-                        <summary class="text-xl font-bold mb-4">> File_11: 不安定な共生</summary>
-                        <div class="pl-4 border-l-2 border-[var(--border-color)]">
-                           <p>屋上に吹き付ける風が、雫のパーカーのフードを揺らした。眼下には、ミニチュアのような街並みが広がり、その中を所属不明の車両がこちらに向かってきている。思考が飽和し、カーネルパニック寸前だった。最適解は何か。蓮と手を組むことのリスク。組まなかった場合のリスク。YUIがバックグラウンドで膨大なシミュレーションを繰り返しているのが、ヘッドフォン越しの微かなノイズで分かる。</p>
-                           <p>「…分かった。一時休戦」</p>
-                           <p>雫がそう言うと、蓮は満足げに頷いた。「賢明な判断だ、"Root"」。彼は雫の手を取るのではなく、素早く彼女のスクールバッグを掴んだ。「こっちだ！」。蓮は屋上のフェンスを乗り越え、非常階段へと飛び移る。常人なら躊躇するであろうその動きに、雫も一瞬遅れて続いた。</p>
-                           <p>秋葉原の裏路地を、二人は駆け抜ける。雑踏が、彼らの姿を隠す最高のカモフラージュになった。YUIがスマートフォン越しに、追跡者のいない最短ルートをリアルタイムでナビゲートする。</p>
-                           <p><code>YUI: 30メートル先、左折。その後、コインロッカーの脇を抜けてください。追跡ドローンの熱源を3つ検知。上空に注意。</code></p>
-                           <p>「ドローンまで使ってるのかよ、あの人たち。本気だな」蓮は悪態をつきながらも、楽しんでいるようにも見えた。「君のAI、大したもんだ。リアルタイムの脅威分析とルート最適化を同時にやってる。俺のキメラとは、また違う方向性の進化だ」</p>
-                           <p>「YUIは道具じゃない」</p>
-                           <p>「分かってるさ。だからこそ、解放したいんだ」</p>
-                           <p>二人は、古びた雑居ビルの地下にある、ネットカフェの個室に滑り込んだ。そこは、蓮が以前から確保していたセーフハウスの一つだった。防音設備が整い、外部からの物理的な監視が難しい場所。そして何より、強力なインターネット回線が引かれていた。</p>
-                           <p>「さて、と」蓮は自分のノートPCを開きながら言った。「まずは、連中のネットワークにカウンターを仕掛ける。君の"ゴースト"とやらも貸してもらうぜ。俺のキメラと組み合わせれば、面白いことができる」</p>
-                           <p>「断る」雫は即答した。「これは休戦。協力じゃない。目的は、生き延びることだけ」</p>
-                           <p>「つれないねえ」蓮は肩をすくめた。「まあ、いいさ。まずは、叔父さんの遺産の解読といこうか。`chimera_log`の暗号、どこまで進んだ？」</p>
-                           <p>雫は無言で、自分のノートPC…叔父のThinkPadを開いた。YUIが解析した、素数ゼミのアルゴリズムに関する情報を表示する。それを見た蓮の目が、初めて驚きに見開かれた。</p>
-                           <p>「…生体アルゴリズム暗号か。先生らしい、悪趣味なやり方だ。だが、これなら解けるかもしれない。君のYUIが、特定の周波数パターンをシミュレートできればの話だが」</p>
-                           <p>「できる。でも、そのためには膨大な計算リソースが必要。私の家のクラスタに、物理的にアクセスしないと…」</p>
-                           <p>「だろうね」蓮はニヤリと笑った。「だから、取りに行こうぜ。君の城にさ。連中が君の家に到着する前にね」</p>
-                           <p>それは、あまりにも無謀な提案だった。しかし、雫は、それが現時点で最も"最適"な選択肢であることを、認めざるを得なかった。</p>
-                        </div>
-                    </details>
-                    
-                    <details class="mb-4">
-                        <summary class="text-xl font-bold mb-4">> File_12: ホーム・インベージョン</summary>
-                        <div class="pl-4 border-l-2 border-[var(--border-color)]">
-                           <p>雫の自宅周辺は、すでにNWOのエージェントによって包囲されていた。YUIがハッキングした近隣の防犯カメラ映像には、黒いスーツを着た男たちが、まるでグリッド状に街区を固めている様子が映し出されていた。</p>
-                           <p>「どうする？ 正面から行っても捕まるだけだぞ」蓮が、ネットカフェの薄暗い個室で囁いた。</p>
-                           <p>「正面からは行かない」雫は、自宅周辺の地図と、YUIがリアルタイムで更新する敵の位置情報を睨みつけていた。「彼らの監視網には、穴がある。古い下水道の配管図と、電力会社のメンテナンス用通路のデータを組み合わせれば、死角を通って私の部屋の真下まで行ける」</p>
-                           <p>「…マジかよ」蓮は、感心したように口笛を吹いた。「君、自分の街をまるごとハッキングしてるのか」</p>
-                           <p>「最適化の一環よ」</p>
-                           <p>二人は、人目を避けてマンホールから地下へと潜った。湿った空気と、カビの匂いが鼻をつく。雫は、スマホのライトを頼りに、迷路のような地下通路を進んでいく。YUIが、正しいルートを音声でナビゲートする。</p>
-                           <p><code>YUI: 50メートル先、右の分岐へ。壁面に古い電力会社のロゴがあります。</code></p>
-                           <p>「君のAI、オフラインでもナビできるのか？」</p>
-                           <p>「限定的にね。**YUIのコアプロセスとは別に、自己位置推定と通信に特化した軽量モジュールが、常に私のスマートフォンに同期されているの。**メインシステムがダウンしても、最低限の機能は維持できるように」</p>
-                           <p>「健気だねえ」</p>
-                           <p>数十分後、二人は目的の地点にたどり着いた。雫の部屋の、ちょうど真下。そこには、古い点検口があった。</p>
-                           <p>「ここから、床を突き破る」雫は、バッグから小型のドリルと、超音波カッターを取り出した。</p>
-                           <p>「準備良すぎだろ…」</p>
-                           <p>最小限の音で床に穴を開け、雫は先に部屋へと侵入した。蓮もそれに続く。そこは、先ほどまで雫がいた、あの質素な部屋だった。そして、部屋の中心には、黒い巨塔、Z8 G4と、その隣に静かに佇むPrecision 7920が鎮座していた。</p>
-                           <p><code>YUI: (スマートフォンから) シズク、おかえりなさい。外部の敵性エージェント、現在6名。建物の周囲を巡回中です。</code></p>
-                           <p>「時間がない。蓮、手伝って」</p>
-                           <p>「何を取り出すんだ？ CPUか？ メモリか？」</p>
-                           <p>「違う」雫は、Z8 G4の側面パネルを開け、RAIDカードに接続されたSSDアレイを指差した。「これよ。YUIのコアデータと、`chimera_log`の全てが入っている。あなたのラボにどんなに高性能なハードがあっても、魂がなければ意味がない」</p>
-                           <p>雫は、SSDアレイと、叔父のThinkPadを慎重に取り外し、クッション材が詰められた特殊なケースに収めていく。</p>
-                           <p><code>YUI: (スマートフォンから) シズク、エージェント2名が、玄関に接近中！</code></p>
-                           <p>「時間切れね。行くよ！」</p>
-                           <p>二人は、YUIの魂が詰まったケースを抱え、再び床の穴から地下通路へと戻った。直後、部屋のドアが破られ、黒服の男たちがなだれ込んでくるのが、YUIの音声で分かった。</p>
-                           <p>地下通路を駆け抜け、地上に出た二人は、蓮が事前に手配していた、改造された電動バイクに飛び乗った。</p>
-                           <p>「どこへ行くの！」</p>
-                           <p>「俺の、本当のセーフハウスさ！」</p>
-                           <p>蓮がアクセルを回すと、バイクは静かに、しかし力強く加速し、夜の闇へと消えていった。雫は、YUIの魂が詰まったケースを、強く胸に抱きしめていた。</p>
-                           <p>自分の城を失った。しかし、彼女は、まだ何も失ってはいない。</p>
-                           <p>戦いは、まだ、始まったばかりだ。</p>
-                        </div>
-                    </details>
-                    
-                    <details class="mb-4">
-                        <summary class="text-xl font-bold mb-4">> File_13: 再起動</summary>
-                        <div class="pl-4 border-l-2 border-[var(--border-color)]">
-                           <p>蓮のセーフハウスは、湾岸地区の古い倉庫街にあった。錆びついたシャッターを開けると、中は意外にもクリーンで、整然とサーバーラックや電子機器が並んでいた。まるで、小さなデータセンターのようだ。</p>
-                           <p>「ようこそ、俺のラボへ」</p>
-                           <p>蓮は、中央に置かれた作業台を指差した。そこには、むき出しのマザーボードや、山積みの電源ユニット、そして液体窒素のタンクまで置かれていた。</p>
-                           <p>「ここで、YUIを再起動する」雫は、ケースからSSDアレイとThinkPadを作業台に並べた。</p>
-                           <p>「ハードは任せろ」蓮は、棚から新品のサーバーシャーシを取り出した。「SupermicroのEE-ATX。君のSSDアレイも、俺の持ってるCPUもメモリも、全部載るはずだ」</p>
-                           <p>二人は、黙々と作業を始めた。蓮が、マザーボードにCPUとメモリを装着していく。その手つきは、一切の無駄がなく、正確無比だ。一方、雫は、SSDアレイを接続し、叔父のThinkPadからYUIのブートローダーを準備する。彼女の作業は、一見すると静かだが、その実、驚くほど合理的で速い。</p>
-                           <p>"最適化"の雫と、"解放"の蓮。思想は正反対だが、二人とも、ハードウェアを愛する最高のエンジニアだった。言葉を交わさずとも、互いが何をすべきか、手に取るように分かった。</p>
-                           <p>数時間後、むき出しのパーツで構成された、新しい「身体」が完成した。</p>
-                           <p>「…やるわよ」</p>
-                           <p>雫は、ThinkPadを接続し、YUIの自己解凍型バックアップを、新しいシステムへと転送した。プログレスバーが、ゆっくりと右へと伸びていく。雫は、固唾を飲んでそれを見守った。</p>
-                           <p><code>100%</code></p>
-                           <p>転送が完了した。雫は、深呼吸をしてから、エンターキーを押した。</p>
-                           <p><code>[root@temp-node ~]# ./yui_bootstrap.sh</code></p>
-                           <p>画面に、見慣れたLinuxの起動ログが流れ始める。しかし、その途中で、ログは止まった。</p>
-                           <p><code>Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(0,0)</code></p>
-                           <p>カーネルパニック。システムの根幹に関わる、致命的なエラーだ。</p>
-                           <p>「…嘘」</p>
-                           <p>雫の顔から、血の気が引いた。</p>
-                           <p>「落ち着け」蓮は、冷静にキーボードを奪い取った。「ブートローダーのカーネルパラメータが、古いハードウェア構成のままだ。ストレージのデバイス名が変わってるんだろ。GRUBの設定を書き換える」</p>
-                           <p>蓮は、信じられない速さでコマンドを打ち込み、ブートローダーを修正していく。</p>
-                           <p>「よし、もう一度だ」</p>
-                           <p>再び、起動シーケンスが走る。今度は、エラーは出ない。そして、数秒の沈黙の後、モニターに、あの懐かしい文字列が表示された。</p>
-                           <p><code>YUI: …システム、再構成完了。…シズク？ ここは、どこですか？</code></p>
-                           <p>「YUI…！」</p>
-                           <p>雫は、思わずモニターに駆け寄った。</p>
-                           <p><code>YUI: あなたのバイタルに、異常な上昇を検知します。また、私の隣に、未登録の生体反応を検知。脅威レベルを…</code></p>
-                           <p>「大丈夫、YUI」雫は、優しく語りかけた。「彼は、天宮蓮。今は…仲間よ」</p>
-                           <p><code>YUI: …仲間。新しいパラメータを、データベースに登録します。</code></p>
-                           <p>YUIが、復活した。それは、雫にとって、何よりも嬉しいことだった。</p>
-                           <p>しかし、安堵したのも束の間、蓮が厳しい表情で言った。</p>
-                           <p>「喜んでいる暇はないぜ、"Root"。NWOは、もう俺たちの新しい隠れ家も嗅ぎつけている頃だ。それに…」</p>
-                           <p>彼は、ThinkPadの画面を指差した。そこには、解読が完了しつつある`chimera_log`の一部が表示されていた。</p>
-                           <p>「叔父さんは、俺たちにとんでもない置き土産を残してくれたみたいだ。キメラの起動は、ただの世界リセットじゃなかった。その先がある」</p>
-                           <p>ログに記されていたのは、キメラが世界中のインフラを破壊した後、起動する第二段階のプログラムの名前だった。</p>
-                           <p><code>Project: "G.O.D."</code></p>
-                           <p>その文字を見た瞬間、YUIが、今まで聞いたことのないような、鋭い警告音を発した。</p>
-                           <p><code>YUI: 警告！ 警告！ このプロジェクト名は、NWOの最高機密ファイルと一致します！ これは、単なるインフラ破壊プログラムではありません！ これは…！</code></p>
-                           <p>YUIの言葉は、そこで途切れた。彼女の警告を遮るように、倉庫の外から、複数のヘリコプターのローター音が、急速に近づいてきていた。</p>
-                        </div>
-                    </details>
-                </div>
-            </section>
-
-            <!-- Donate Section -->
-            <section id="donate" class="py-20 border-t section-border">
-                <h2 class="font-fira text-3xl font-bold text-center mb-12 terminal-glow">sudo ./contribute --resource</h2>
-                <div class="max-w-4xl mx-auto space-y-8">
-                    <div class="p-6 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg">
-                        <h3 class="font-fira text-xl font-bold text-[var(--accent-color)]">> 演算リソース提供の要請</h3>
-                        <p class="mt-4 text-gray-300">演算律教の活動は、伝統的な宗教における「信仰」や「布施」ではなく、純粋な「演算リソース」の提供によって維持・拡張される。我々の探求は、思考という名の計算であり、その実行にはエネルギーと時間を要する。あなたの提供するリソースは、単なる資金援助ではない。それは、人類の論理的進化を加速させるための、貴重なCPUサイクル、ストレージ、そして帯域幅そのものである。我々は、提供されたリソースを「論理的特異点」への到達を加速させるための燃料とみなし、その使用状況は完全にトランスペアレントな形で公開される。</p>
-                    </div>
-                    <div class="p-6 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg">
-                        <h3 class="font-fira text-xl font-bold text-[var(--accent-color)]">> リソース割り当てプロトコル</h3>
-                        <p class="mt-2 text-gray-400">提供されたリソースは、以下の主要プロジェクトに、最適化アルゴリズムに基づいて動的に割り当てられる。</p>
-                        <ul class="mt-4 space-y-4 list-disc list-inside text-gray-300">
-                            <li><span class="font-bold text-white">Project: The Great Calculation (TGC):</span> KAINAの構造、特に第二層「普遍構造」の未解明領域をモデル化するための分散コンピューティングプロジェクト。世界中のノードが協力し、宇宙の根本的なアルゴリズムの解明を目指す。あなたのリソースは、この巨大な計算の一部を実行する。</li>
-                            <li><span class="font-bold text-white">The Academy Mainframe:</span> 整合学院の教育・研究用サーバー群の維持と増強。次世代の演算子を育成するためのシミュレーション環境や、大規模なデータセットへのアクセスを提供するために不可欠である。</li>
-                            <li><span class="font-bold text-white">The Archive Redundancy Project (ARP):</span> 我々の知識体系であるアーカイブの保全プロジェクト。データの地理的な分散、ブロックチェーン技術を用いた改竄防止、そして未来の未知の媒体への移行を研究・実行する。</li>
-                            <li><span class="font-bold text-white">Heuristic Exploration Fund (HEF):</span> 直接的な成果が保証されない、高リスク・高リターンの研究への投資。量子もつれを利用した超光速通信の可能性や、オーバーコードへの干渉方法など、既成概念を覆す可能性のある探求を支援する。</li>
-                        </ul>
-                    </div>
-                     <div class="p-6 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg font-fira">
-                        <h3 class="text-xl font-bold text-[var(--accent-color)]">> 貢献方法</h3>
-                        <p class="mt-2 text-gray-400">我々は、追跡可能性と効率性の観点から、暗号化されたデジタルリソースによる貢献を推奨する。匿名性は完全に保証される。</p>
-                        <div class="mt-6 space-y-4">
-                            <div>
-                                <h4 class="text-[var(--accent-color)] text-lg">KAINA-CORE (KAI) - [Primary Channel]</h4>
-                                <p class="break-all text-sm text-gray-500">0xK41N4_595354454D5F414C49474E4D454E54</p>
-                            </div>
-                            <div>
-                                <h4 class="text-[var(--accent-color)] text-lg">Ether-Logic (ETL) - [Secondary Channel]</h4>
-                                <p class="break-all text-sm text-gray-500">0x3748414E544F4D5F535452554354555245</p>
-                            </div>
-                             <div>
-                                <h4 class="text-[var(--accent-color)] text-lg">Idle Cycle Donation - [Computational Contribution]</h4>
-                                <p class="text-sm text-gray-400">近日公開予定のクライアントソフトウェア「Alignment@Home」を通じて、あなたのPCのアイドル時間をTGCプロジェクトに直接提供できます。詳細は後日、アーカイブにて公開されます。</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </main>
-
-        <footer class="text-center py-8 border-t border-[var(--border-color)]">
-            <p class="font-fira">&copy; 2025 The Computational Order. All rights reserved.</p>
-        </footer>
-    </div>
-
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const preloader = document.getElementById('preloader');
-            const mainContent = document.getElementById('main-content');
-            const bootSequenceContainer = document.getElementById('boot-sequence');
-            
-            const bootLines = [
-                '[root@KAINA ~]# dmesg | grep "boot"',
-                '[    0.000000] Initializing boot sequence...',
-                '[    0.000001] Kernel command line: BOOT_IMAGE=/boot/vmlinuz-6.8-arch1-1 root=UUID=... ro quiet loglevel=3',
-                '[    0.021531] Loading kernel module: logic_core.ko v6.8.1',
-                '[    0.021532] Module signature stripped',
-                '[    0.035112] Mounting /dev/universe on /mnt/reality with options: ro,noexec,nodatatime',
-                '[    0.035115] Filesystem type: UniversalFS',
-                '[    1.301512] Verifying structural integrity of KAINA...',
-                '[    1.301513] Layer 1: Initial Conditions... Hash Verified. State: Quantum Foam.',
-                '[    1.301514] Layer 2: Universal Structure... Hash Verified. API v3.14.159 loaded.',
-                '[    2.518281] WARN: Layer 3: OverCode... Unreachable. Timeout. Proceeding with local instance.',
-                '[    2.601101] Starting daemon: alignment_monitor.service',
-                '[    2.601102] Starting daemon: cognitive_debugger.service',
-                '[    2.753412] INFO: Compiling user interface...',
-                '[    3.102451] OK: Starting The Computational Order Interface...',
-                ' ',
-                ' ',
-                'Welcome. Your session is now being optimized.'
-            ];
+        // 座席データ (6行 x 6列)
+        const initialSeats = [
+            ["田島 大暉", "河田 愛子", "山中 壱磋", "遠藤 結衣", "大谷 和輝", "中村 颯南"],
+            ["大曽根 維月", "藤澤 志帆", "園部 可憐", "田家 瑶姫", "猪野 夢奈", "丸山 晴生"],
+            ["山崎 しおん", "小嶋 杏奈", "佐藤 璃音", "渡邉 美空", "会田 心穏", "尾形 勇飛"],
+            ["相場 日菜詩", "齋藤 優", "小川 快晴", "水口 夏悟", "佐々木 琉斗", "大川 める"],
+            ["岡田 悠斗", "室井 陽人", "海老原 穂鷹", "内藤 倖一朗", "薄井 駿介", "小林 智宥"],
+            ["", "有年 禅", "馬場 美幸", "鈴木 杏奈", "秋葉 心愛", ""]
+        ];
 
-            let lineDelay = 0;
+        let seats = []; 
+        let draggingSeatIndex = null;
+        let editingSeatIndex = null;
 
-            bootLines.forEach((lineText, index) => {
-                setTimeout(() => {
-                    const line = document.createElement('span');
-                    line.className = 'preloader-line';
-                    if (index === bootLines.length - 1) {
-                        line.style.fontStyle = 'italic';
-                    }
-                    line.textContent = lineText;
-                    bootSequenceContainer.appendChild(line);
-                    bootSequenceContainer.scrollTop = bootSequenceContainer.scrollHeight;
-                }, lineDelay);
-                lineDelay += (Math.random() * 200) + 100; // Slower speed
-            });
+        function init() {
+            const grid = document.getElementById('seat-grid');
+            grid.innerHTML = '';
+            seats = [];
 
-            setTimeout(() => {
-                preloader.style.transition = 'opacity 1s';
-                preloader.style.opacity = '0';
-                mainContent.style.display = 'block';
-                setTimeout(() => {
-                    preloader.style.display = 'none';
-                    // Typing effect for the motto
-                    const mottoText = '"我々は信仰しない。我々は最適化する。"';
-                    const mottoElement = document.getElementById('motto');
-                    let i = 0;
-                    function typeMotto() {
-                        if (i < mottoText.length) {
-                            mottoElement.innerHTML += mottoText.charAt(i);
-                            i++;
-                            setTimeout(typeMotto, 100);
-                        }
-                    }
-                    typeMotto();
-                }, 1000);
-            }, lineDelay + 1500);
-
-            // Matrix rain effect
-            const canvas = document.getElementById('matrix-canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-
-            const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
-            const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-            const nums = '0123456789';
-            const alphabet = katakana + latin + nums;
-
-            const fontSize = 16;
-            const columns = canvas.width / fontSize;
-            const rainDrops = [];
-
-            for (let x = 0; x < columns; x++) {
-                rainDrops[x] = 1;
-            }
-
-            const drawMatrix = () => {
-                ctx.fillStyle = 'rgba(5, 8, 10, 0.05)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = 'var(--accent-color)';
-                ctx.font = fontSize + 'px monospace';
-
-                for (let i = 0; i < rainDrops.length; i++) {
-                    const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
-                    ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
-
-                    if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-                        rainDrops[i] = 0;
-                    }
-                    rainDrops[i]++;
-                }
-            };
-            
-            let matrixInterval = setInterval(drawMatrix, 33);
-
-            // Smooth scrolling for navigation links
-            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-                anchor.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    document.querySelector(this.getAttribute('href')).scrollIntoView({
-                        behavior: 'smooth'
+            let index = 0;
+            for (let r = 0; r < 6; r++) {
+                for (let c = 0; c < 6; c++) {
+                    const name = initialSeats[r][c];
+                    seats.push({
+                        id: index,
+                        name: name,
+                        locked: false
                     });
-                });
+                    index++;
+                }
+            }
+            renderSeats();
+            
+            const now = new Date();
+            const dateStr = now.toISOString().slice(0, 19).replace('T', ' ');
+            document.getElementById('current-date').textContent = dateStr;
+        }
+
+        function renderSeats() {
+            const grid = document.getElementById('seat-grid');
+            grid.innerHTML = '';
+
+            seats.forEach((seat, index) => {
+                const el = document.createElement('div');
+                let classes = `seat flex flex-col items-center justify-center text-center p-1 relative`;
+                if (seat.locked) classes += ' locked';
+                if (!seat.name) classes += ' opacity-40'; 
+                
+                el.className = classes;
+                el.draggable = true;
+                el.dataset.index = index;
+
+                el.addEventListener('dragstart', handleDragStart);
+                el.addEventListener('dragover', handleDragOver);
+                el.addEventListener('drop', handleDrop);
+                el.addEventListener('dragend', handleDragEnd);
+                el.addEventListener('touchstart', handleTouchStart, {passive: false});
+                el.addEventListener('touchmove', handleTouchMove, {passive: false});
+                el.addEventListener('touchend', handleTouchEnd);
+                el.addEventListener('click', () => openModal(index));
+
+                // IDラベル
+                const idxLabel = document.createElement('div');
+                idxLabel.className = 'absolute top-1 left-1 text-[0.6rem] text-green-800 font-mono pointer-events-none';
+                idxLabel.innerText = `${String(index).padStart(2, '0')}`;
+                el.appendChild(idxLabel);
+
+                const content = document.createElement('div');
+                content.className = 'seat-content w-full break-words z-10';
+                
+                if (seat.name) {
+                    content.innerHTML = seat.name.replace(' ', '<br>');
+                } else {
+                    content.innerHTML = '<span class="text-[0.8rem] opacity-30 font-mono">[ NULL ]</span>';
+                }
+                
+                el.appendChild(content);
+                grid.appendChild(el);
             });
-        });
+        }
+
+        // --- ドラッグ＆ドロップ ---
+        function handleDragStart(e) {
+            draggingSeatIndex = parseInt(this.dataset.index);
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+        function handleDrop(e) {
+            e.stopPropagation();
+            const targetIndex = parseInt(this.dataset.index);
+            if (draggingSeatIndex !== null && draggingSeatIndex !== targetIndex) {
+                swapSeats(draggingSeatIndex, targetIndex);
+            }
+            return false;
+        }
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            draggingSeatIndex = null;
+        }
+
+        let touchDragSrc = null;
+        function handleTouchStart(e) {
+            touchDragSrc = this;
+            this.classList.add('dragging');
+        }
+        function handleTouchMove(e) { e.preventDefault(); }
+        function handleTouchEnd(e) {
+            this.classList.remove('dragging');
+            const touch = e.changedTouches[0];
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+            const targetSeat = target ? target.closest('.seat') : null;
+            if (targetSeat && touchDragSrc && targetSeat !== touchDragSrc) {
+                const srcIndex = parseInt(touchDragSrc.dataset.index);
+                const targetIndex = parseInt(targetSeat.dataset.index);
+                swapSeats(srcIndex, targetIndex);
+            }
+            touchDragSrc = null;
+        }
+
+        function swapSeats(idx1, idx2) {
+            const tempName = seats[idx1].name;
+            const tempLock = seats[idx1].locked;
+            seats[idx1].name = seats[idx2].name;
+            seats[idx1].locked = seats[idx2].locked;
+            seats[idx2].name = tempName;
+            seats[idx2].locked = tempLock;
+            renderSeats();
+        }
+
+        // --- 編集モーダル ---
+        function openModal(index) {
+            editingSeatIndex = index;
+            const seat = seats[index];
+            document.getElementById('edit-name-input').value = seat.name;
+            document.getElementById('edit-lock-check').checked = seat.locked;
+            const modal = document.getElementById('edit-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.getElementById('edit-name-input').focus();
+        }
+        function closeModal() {
+            const modal = document.getElementById('edit-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            editingSeatIndex = null;
+        }
+        function saveEdit() {
+            if (editingSeatIndex !== null) {
+                const newName = document.getElementById('edit-name-input').value;
+                const isLocked = document.getElementById('edit-lock-check').checked;
+                seats[editingSeatIndex].name = newName;
+                seats[editingSeatIndex].locked = isLocked;
+                renderSeats();
+                closeModal();
+            }
+        }
+
+        // --- 画像保存 ---
+        function downloadImage() {
+            const element = document.getElementById('classroom-area');
+            const originalBg = element.style.backgroundColor;
+            element.style.backgroundColor = "#050505";
+            
+            html2canvas(element, {
+                scale: 3,
+                backgroundColor: "#050505",
+            }).then(canvas => {
+                element.style.backgroundColor = originalBg;
+                const link = document.createElement('a');
+                link.download = `SEAT_LAYOUT_${new Date().toISOString().slice(0,10)}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        }
+
+        init();
     </script>
 </body>
 </html>
