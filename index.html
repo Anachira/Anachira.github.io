@@ -13,7 +13,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         let firebaseConfig;
         let appId;
@@ -45,6 +45,11 @@
             window.auth = auth;
             window.doc = doc;
             window.setDoc = setDoc;
+            window.addDoc = addDoc;
+            window.collection = collection;
+            window.query = query;
+            window.orderBy = orderBy;
+            window.limit = limit;
             window.appId = appId;
             window.isCanvasEnv = isCanvasEnv;
 
@@ -68,6 +73,7 @@
                 if (user) {
                     console.log("User authenticated:", user.uid);
                     setupRealtimeListener();
+                    setupCommentsListener(); // コメントリスナー追加
                 }
             });
 
@@ -95,6 +101,33 @@
                 }, (error) => {
                     console.error("Sync error", error);
                     updateStatus(`SYNC ERROR: ${error.code}`, "red");
+                });
+            }
+
+            // コメント用リスナー
+            function setupCommentsListener() {
+                if (!auth.currentUser) return;
+
+                let commentsColRef;
+                if (window.isCanvasEnv) {
+                    // Canvas環境: コレクションパス
+                    commentsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'comments');
+                } else {
+                    // 本番環境: コレクションパス
+                    commentsColRef = collection(db, 'seat_comments');
+                }
+                
+                // 新しい順に50件取得
+                const q = query(commentsColRef, orderBy("timestamp", "desc"), limit(50));
+
+                onSnapshot(q, (snapshot) => {
+                    const comments = [];
+                    snapshot.forEach((doc) => {
+                        comments.push(doc.data());
+                    });
+                    window.renderComments(comments);
+                }, (error) => {
+                    console.error("Comments sync error", error);
                 });
             }
 
@@ -289,7 +322,7 @@
             }
         }
 
-        /* Tenor GIF用コンテナスタイル (修正版) */
+        /* Tenor GIF用コンテナスタイル */
         .profile-container {
             width: 150px;
             height: 150px; /* 正方形に固定 */
@@ -441,6 +474,56 @@
         }
         @keyframes blink { 50% { opacity: 0; } }
 
+        /* コメント欄のスタイル */
+        .comments-section {
+            width: 100%;
+            max-width: 1024px;
+            margin-bottom: 20px;
+        }
+        
+        .comments-list {
+            height: 300px;
+            overflow-y: auto;
+            background: rgba(0, 10, 0, 0.5);
+            border-top: 1px solid var(--dim-color);
+            padding: 10px;
+            font-family: 'Share Tech Mono', 'Noto Sans JP', monospace;
+            font-size: 0.85rem;
+        }
+
+        .comment-item {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed var(--dim-color);
+            word-break: break-all;
+        }
+        
+        .comment-time {
+            color: var(--dim-color);
+            font-size: 0.7rem;
+            margin-right: 5px;
+        }
+        
+        .comment-user {
+            color: var(--main-color);
+            font-weight: bold;
+            margin-right: 5px;
+        }
+
+        .comment-text {
+            color: #fff;
+        }
+        
+        /* 萌えGIFアイコン（コメント欄用） */
+        .moe-icon {
+            height: 50px;
+            width: auto; /* 修正: 1対1制限を解除、比率を維持 */
+            border: 1px solid var(--main-color);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-right: 10px;
+        }
+
         @media print {
             body { background: white; color: black; background-image: none; }
             .seat { border: 2px solid #000; color: #000; background: white; }
@@ -526,6 +609,31 @@
             </div>
         </main>
 
+        <!-- コメント欄 (追加) -->
+        <div class="comments-section terminal-box no-print">
+            <div class="p-4 bg-black/50 border-b border-green-900 flex justify-between items-center">
+                <div class="flex items-center">
+                    <div class="moe-icon mr-3">
+                        <img style="display: block;-webkit-user-select: none;margin: auto; width: auto; height: 100%; object-fit: contain;" src="https://i.ppy.sh/c00a2158b578c2bee7a261f474af0d978642df3f/68747470733a2f2f696d6775722d617263686976652e7070792e73682f433047795236742e676966">
+                    </div>
+                    <h3 class="text-lg font-bold text-green-400">>> CHAT_LOGS</h3>
+                </div>
+                <span class="text-xs text-green-800">REALTIME_MESSAGING</span>
+            </div>
+            
+            <div id="comments-list" class="comments-list">
+                <!-- JSでコメントを表示 -->
+                <div class="text-center text-green-800 mt-10">LOADING_LOGS...</div>
+            </div>
+
+            <div class="p-4 flex gap-2 items-center bg-black/80">
+                <span class="text-green-600 font-bold">></span>
+                <input type="text" id="comment-user" placeholder="USER_NAME" class="w-1/3 sm:w-1/4 px-2 py-1 text-sm bg-black border border-green-800 text-green-400 focus:border-green-400 outline-none" value="ANONYMOUS">
+                <input type="text" id="comment-input" placeholder="ENTER_MESSAGE..." class="flex-grow px-2 py-1 text-sm bg-black border border-green-800 text-green-400 focus:border-green-400 outline-none">
+                <button onclick="postComment()" class="btn-cli px-3 py-1 text-sm font-bold bg-green-900/30 hover:bg-green-800/50">SEND</button>
+            </div>
+        </div>
+
         <!-- フッター: プロフィール & BGM -->
         <footer class="no-print">
             
@@ -605,6 +713,77 @@
             widget.seekTo(0);
             widget.play();
         });
+
+        // --- コメント機能 ---
+        async function postComment() {
+            const input = document.getElementById('comment-input');
+            const user = document.getElementById('comment-user');
+            const text = input.value.trim();
+            const username = user.value.trim() || 'ANONYMOUS';
+
+            if (!text) return;
+            if (!window.auth.currentUser) {
+                alert("SERVER_ERROR: AUTH_REQUIRED");
+                return;
+            }
+
+            try {
+                let commentsColRef;
+                if (window.isCanvasEnv) {
+                    commentsColRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'comments');
+                } else {
+                    commentsColRef = window.collection(window.db, 'seat_comments');
+                }
+
+                await window.addDoc(commentsColRef, {
+                    text: text,
+                    user: username,
+                    timestamp: new Date().toISOString()
+                });
+
+                input.value = ''; // Clear input
+            } catch (e) {
+                console.error("Post failed", e);
+                alert("ERROR: MESSAGE_SEND_FAILED");
+            }
+        }
+
+        // コメント描画
+        window.renderComments = function(comments) {
+            const list = document.getElementById('comments-list');
+            list.innerHTML = '';
+
+            if (comments.length === 0) {
+                list.innerHTML = '<div class="text-center text-green-900 mt-4">NO_LOGS_FOUND</div>';
+                return;
+            }
+
+            // 新しい順で来るが、表示は古い順（上から）または新しい順（上から）どちらでも可
+            // ここではチャットっぽく新しいものを上にします
+            comments.forEach(c => {
+                const item = document.createElement('div');
+                item.className = 'comment-item';
+                
+                // 時間フォーマット (HH:MM:SS)
+                const date = new Date(c.timestamp);
+                const timeStr = date.toLocaleTimeString('ja-JP', { hour12: false });
+
+                item.innerHTML = `
+                    <span class="comment-time">[${timeStr}]</span>
+                    <span class="comment-user"><${c.user}></span>
+                    <span class="comment-text">${c.text}</span>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        // Enterキーで送信
+        document.getElementById('comment-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                postComment();
+            }
+        });
+
 
         // --- ライセンス画面の処理 ---
         const licenseData = [
