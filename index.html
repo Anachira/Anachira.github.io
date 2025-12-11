@@ -10,7 +10,7 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = JSON.parse(__firebase_config);
@@ -27,16 +27,32 @@
         window.appId = appId;
 
         // 認証と初期化
-        signInAnonymously(auth).then(() => {
-            console.log("Logged in anonymously");
-            setupRealtimeListener();
-        }).catch((error) => {
-            console.error("Auth failed", error);
-            alert("SERVER_CONNECTION_ERROR: AUTHENTICATION_FAILED");
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth failed", error);
+                updateStatus("AUTH_ERROR", "red");
+            }
+        };
+
+        initAuth();
+
+        // 認証状態を監視してリスナーを設定
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                console.log("User authenticated:", user.uid);
+                setupRealtimeListener();
+            }
         });
 
         // リアルタイムリスナーの設定
         function setupRealtimeListener() {
+            if (!auth.currentUser) return;
             const seatsDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'seats', 'current_layout');
 
             onSnapshot(seatsDocRef, (docSnapshot) => {
@@ -363,6 +379,7 @@
 
         // 初期データをクラウドに送信（初回のみ）
         window.initializeCloudData = async function() {
+            if (!window.auth.currentUser) return; // ガード
             console.log("Initializing Cloud Data...");
             seats = [];
             let index = 0;
@@ -394,7 +411,7 @@
 
         // データをクラウドに保存
         async function uploadSeatsToCloud(newSeats) {
-            if (!window.db || !window.appId) return;
+            if (!window.db || !window.appId || !window.auth.currentUser) return; // authチェック追加
             try {
                 const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'seats', 'current_layout');
                 await window.setDoc(docRef, {
