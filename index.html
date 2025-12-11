@@ -6,6 +6,8 @@
     <title>88-WORKS | SEAT MANAGER</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- SoundCloud Widget API -->
+    <script src="https://w.soundcloud.com/player/api.js"></script>
     
     <!-- Firebase SDKs -->
     <script type="module">
@@ -111,7 +113,7 @@
     </script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@700;900&display=swap');
         
         :root {
             --bg-color: #050505;
@@ -131,7 +133,7 @@
             text-transform: uppercase;
             display: flex;
             flex-direction: column;
-            overflow: hidden; /* ライセンス画面中はスクロール禁止 */
+            overflow-x: hidden; 
         }
 
         /* ライセンス画面スタイル */
@@ -144,7 +146,6 @@
             justify-content: center;
             align-items: center;
             padding: 20px;
-            /* CRT起動アニメーション */
             animation: turnOn 0.5s ease-out forwards;
         }
 
@@ -156,16 +157,15 @@
         }
 
         .license-box {
-            max-width: 700px;
+            max-width: 800px;
             width: 100%;
             border: 2px solid var(--main-color);
             padding: 30px;
             background: rgba(0, 10, 0, 0.95);
-            box-shadow: 0 0 30px var(--dim-color);
+            box-shadow: 0 0 20px var(--dim-color);
             position: relative;
         }
 
-        /* 警告時の赤枠アニメーション */
         .license-box.alert-mode {
             border-color: var(--alert-color);
             box-shadow: 0 0 30px var(--alert-color);
@@ -184,12 +184,14 @@
             white-space: pre-wrap;
             margin-bottom: 5px;
             opacity: 1;
+            color: #00ff41 !important;
+            text-shadow: 0 0 8px rgba(0, 255, 65, 0.6);
             font-weight: bold;
         }
 
-        /* 文字色の定義 */
         .text-green { color: #00ff41 !important; text-shadow: 0 0 8px rgba(0, 255, 65, 0.6); }
         .text-red { color: #ff3333 !important; text-shadow: 0 0 10px rgba(255, 0, 0, 0.8); }
+        .text-black-weight { font-weight: 900 !important; } 
         
         .typing-cursor::after {
             content: '█';
@@ -198,7 +200,6 @@
             margin-left: 5px;
         }
 
-        /* グリッチエフェクト（バグった文字） */
         .glitch-text {
             animation: glitch 1s infinite linear alternate-reverse;
         }
@@ -226,7 +227,6 @@
             box-shadow: 0 0 30px var(--alert-color) !important;
         }
 
-        /* メインアプリ（初期は非表示） */
         #main-app {
             display: none;
             width: 100%;
@@ -238,10 +238,7 @@
             transition: opacity 1s;
         }
 
-        /* 88-Works Branding Styles */
-        .brand-text {
-            text-shadow: 0 0 10px var(--main-color);
-        }
+        .brand-text { text-shadow: 0 0 10px var(--main-color); }
         
         .user-badge {
             border: 1px solid var(--main-color);
@@ -251,20 +248,55 @@
             letter-spacing: 1px;
         }
 
-        /* Footer Styles */
         footer {
             margin-top: auto;
             width: 100%;
             max-width: 1024px;
             border-top: 1px solid var(--dim-color);
-            padding: 20px 0;
+            padding: 40px 0;
             font-size: 0.75rem;
-            opacity: 0.8;
+            opacity: 0.9;
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
+            gap: 20px;
+        }
+
+        .profile-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        @media (min-width: 640px) {
+            .profile-section {
+                flex-direction: row;
+                justify-content: space-between;
+                text-align: left;
+                padding: 0 20px;
+            }
+        }
+
+        /* Tenor GIF用コンテナスタイル (修正版) */
+        .profile-container {
+            width: 150px;
+            height: 150px; /* 正方形に固定 */
+            border: 1px solid var(--main-color);
+            box-shadow: 0 0 15px var(--dim-color);
+            transition: all 0.3s;
+            border-radius: 0.5rem;
+            overflow: hidden; /* はみ出しをカット */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #000;
+        }
+        .profile-container:hover {
+            box-shadow: 0 0 20px var(--main-color);
+            transform: scale(1.05);
         }
 
         .terminal-box {
@@ -476,15 +508,49 @@
             </div>
         </main>
 
-        <!-- フッター -->
+        <!-- フッター: プロフィール & BGM -->
         <footer class="no-print">
-            <div class="font-mono">
-                >> CONTACT: <a href="mailto:luruna_anachira.88works@outlook.com" class="text-green-400 hover:text-white underline">luruna_anachira.88works@outlook.com</a>
+            
+            <div class="profile-section w-full max-w-5xl terminal-box p-6 mb-4">
+                <div class="flex flex-col sm:flex-row items-center gap-6 w-full">
+                    <!-- GIF Icon (Tenor Embed) - Cropped to Square -->
+                    <div class="shrink-0 profile-container">
+                        <!-- Imouto Sae Ireba Ii GIF (Updated via iframe for better control/sizing) -->
+                        <iframe src="https://giphy.com/embed/GT46Efqk6oPBsGeRK7" width="100%" height="100%" style="pointer-events: none;" frameBorder="0" class="giphy-embed" allowFullScreen></iframe>
+                    </div>
+                    
+                    <!-- Info -->
+                    <div class="font-mono text-sm sm:text-base flex-grow w-full">
+                        <div class="border-b border-green-800 pb-2 mb-2 text-green-400 font-bold">
+                            >> DEVELOPER_PROFILE
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                                <span class="text-green-600">> NAME:</span> ISSA YAMANAKA<br>
+                                <span class="text-green-600">> ROLE:</span> ROOT OVERCLOCKER<br>
+                                <span class="text-green-600">> OS:</span> ARCH LINUX (BTW)
+                            </div>
+                            <div>
+                                <span class="text-green-600">> GITHUB:</span> <a href="https://github.com/Anachira" target="_blank" class="hover:text-white underline">Anachira</a><br>
+                                <span class="text-green-600">> DISCORD:</span> hachiya_works<br>
+                                <span class="text-green-600">> EMAIL:</span> <a href="mailto:luruna_anachira.88works@outlook.com" class="hover:text-white underline">luruna...</a>
+                            </div>
+                        </div>
+                        <div class="mt-4 text-xs text-green-700">
+                            /* 88-WORKS PROJECT EST. 2022 */
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="font-mono text-right">
-                [ EST. 2022 ] 88-WORKS PRODUCTION<br>
-                POWERED BY ROOT OVERCLOCKER
+
+            <!-- BGM Player (Embedded in Footer) -->
+            <div class="w-full max-w-5xl terminal-box p-2">
+                <div class="text-[0.6rem] text-green-800 font-mono mb-1 pl-2">> BACKGROUND_AUDIO_STREAM</div>
+                <iframe id="sc-widget" width="100%" height="100" scrolling="no" frameborder="no" allow="autoplay" 
+                    src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/tartrate/fire-the-daybreak&color=%2300ff41&auto_play=false&hide_related=false&show_comments=false&show_user=true&show_reposts=false&show_teaser=true&visual=false">
+                </iframe>
             </div>
+
         </footer>
     </div>
 
@@ -513,14 +579,24 @@
     </div>
 
     <script>
+        // --- SoundCloud Loop Script ---
+        const iframeElement = document.getElementById('sc-widget');
+        const widget = SC.Widget(iframeElement);
+        
+        widget.bind(SC.Widget.Events.FINISH, function() {
+            widget.seekTo(0);
+            widget.play();
+        });
+
         // --- ライセンス画面の処理 ---
         const licenseData = [
             { text: "WARNING: UNAUTHORIZED ACCESS IS STRICTLY PROHIBITED.", style: "text-green" },
             { text: "DETECTING USER PRIVILEGES...", style: "text-green" },
             { text: "ACCESS GRANTED: GUEST LEVEL 1", style: "text-green" },
             { text: "", style: "" },
-            { text: ">> SYSTEM: 88-WORKS SEAT MANAGER", style: "text-green" },
-            { text: ">> VERSION: 3.2 (STABLE)", style: "text-green" },
+            // ここにプレーヤーが重なるため空白行を設ける
+            { text: "", style: "" },
+            { text: "", style: "" }, 
             { text: "", style: "" },
             { text: "LICENSE AGREEMENT:", style: "text-green" },
             { text: "1. ALL DATA TRANSMISSIONS ARE ENCRYPTED.", style: "text-green" },
@@ -528,10 +604,11 @@
             { text: "3. ALL ACTIONS ARE LOGGED BY ROOT OVERCLOCKER.", style: "text-green" },
             { text: "4. OBEY THE ADMIN AT ALL TIMES.", style: "text-green" },
             { text: "", style: "" },
-            // ここから警告文
-            { text: "WARNING: MALICIOUS ACTIVITY DETECTED", style: "text-red text-xl font-bold glitch-text" },
+            // 警告文
+            { text: "WARNING: SECURITY ALERT", style: "text-red text-xl font-bold glitch-text" },
             { text: "----------------------------------------", style: "text-red" },
             { text: "本システムに対する不正アクセス及び妨害行為（荒らし）が検知された場合、", style: "text-red" },
+            { text: "管理者 山中壱磋 (ROOT OVERCLOCKER) により", style: "text-red text-lg text-black-weight" }, // 極太フォントクラス適用
             { text: "直ちに報復プロトコル \"JUDGEMENT_DAY\" を実行する。", style: "text-red" },
             { text: "対象IPに対してDDoS攻撃を展開し、", style: "text-red text-lg" },
             { text: "デバイス内の全データを強制暗号化（ロック）する。", style: "text-red text-lg" },
@@ -548,10 +625,9 @@
             for (let i = 0; i < data.length; i++) {
                 const lineData = data[i];
                 const lineDiv = document.createElement('div');
-                lineDiv.className = `license-text-line typing-cursor ${lineData.style}`; // スタイル適用
+                lineDiv.className = `license-text-line typing-cursor ${lineData.style}`; 
                 container.appendChild(lineDiv);
                 
-                // 赤字の時は警告モード（枠を赤くする）
                 if (lineData.style.includes('text-red')) {
                     document.querySelector('.license-box').classList.add('alert-mode');
                 } else {
@@ -559,9 +635,15 @@
                 }
 
                 const lineText = lineData.text;
+                // 空行の場合はスキップ
+                if (lineText.length === 0) {
+                    lineDiv.innerHTML = "&nbsp;"; 
+                    lineDiv.classList.remove('typing-cursor');
+                    continue;
+                }
+
                 for (let j = 0; j < lineText.length; j++) {
                     lineDiv.textContent = lineText.substring(0, j + 1);
-                    // 赤字の時は少しゆっくり表示して威圧感を出す
                     const currentSpeed = lineData.style.includes('text-red') ? 20 : speed;
                     await new Promise(r => setTimeout(r, currentSpeed));
                 }
