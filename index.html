@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>88-WORKS | SEAT MANAGER</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -139,13 +139,13 @@
         /* ライセンス画面スタイル */
         #license-overlay {
             position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
+            top: 0; left: 0; width: 100%; height: 100%;
             background-color: #000;
             z-index: 9999;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 10px;
             animation: turnOn 0.5s ease-out forwards;
         }
 
@@ -159,8 +159,10 @@
         .license-box {
             max-width: 800px;
             width: 100%;
+            max-height: 90vh; /* スマホではみ出さないように */
+            overflow-y: auto; /* 長い場合はスクロール */
             border: 2px solid var(--main-color);
-            padding: 30px;
+            padding: 20px;
             background: rgba(0, 10, 0, 0.95);
             box-shadow: 0 0 20px var(--dim-color);
             position: relative;
@@ -180,13 +182,20 @@
         }
 
         .license-text-line {
-            line-height: 1.5;
+            line-height: 1.4;
             white-space: pre-wrap;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
             opacity: 1;
             color: #00ff41 !important;
             text-shadow: 0 0 8px rgba(0, 255, 65, 0.6);
             font-weight: bold;
+            font-size: 0.8rem; /* スマホ向けに少し小さく */
+        }
+        @media (min-width: 640px) {
+            .license-text-line {
+                font-size: 0.9rem;
+                margin-bottom: 5px;
+            }
         }
 
         .text-green { color: #00ff41 !important; text-shadow: 0 0 8px rgba(0, 255, 65, 0.6); }
@@ -233,7 +242,7 @@
             flex-direction: column;
             align-items: center;
             flex-grow: 1;
-            padding: 20px 0;
+            padding: 10px 0;
             opacity: 0;
             transition: opacity 1s;
         }
@@ -253,7 +262,7 @@
             width: 100%;
             max-width: 1024px;
             border-top: 1px solid var(--dim-color);
-            padding: 40px 0;
+            padding: 20px 0; /* スマホ向けに縮小 */
             font-size: 0.75rem;
             opacity: 0.9;
             display: flex;
@@ -343,7 +352,7 @@
         .seat-content {
             pointer-events: none;
             font-family: 'Noto Sans JP', sans-serif;
-            font-size: 1.1rem;
+            font-size: 0.9rem; /* スマホ向けデフォルト */
             font-weight: 700;
             line-height: 1.3;
             letter-spacing: 0.05em;
@@ -352,6 +361,12 @@
             width: 100%;
             word-break: break-all;
         }
+        @media (min-width: 640px) {
+            .seat-content {
+                font-size: 1.1rem;
+            }
+        }
+
 
         .locked {
             border-color: var(--alert-color) !important;
@@ -365,7 +380,7 @@
             content: '[LOCKED]';
             position: absolute;
             top: 2px; right: 2px;
-            font-size: 0.6rem;
+            font-size: 0.5rem;
             color: var(--alert-color);
             font-family: 'Share Tech Mono', monospace;
             opacity: 0.8;
@@ -401,6 +416,8 @@
             background: rgba(5, 5, 5, 0.95);
             border: 1px solid var(--main-color);
             box-shadow: 0 0 30px rgba(0, 255, 65, 0.2);
+            width: 90%; /* スマホ対応 */
+            max-width: 400px;
         }
         
         input[type="text"] {
@@ -434,6 +451,7 @@
             footer { display: none; }
             #license-overlay { display: none; }
             #main-app { display: flex !important; opacity: 1 !important; }
+            #bgm-player-container { display: none; }
         }
     </style>
 </head>
@@ -446,10 +464,10 @@
             <div id="license-text-container" class="font-mono"></div>
             
             <div id="license-buttons" class="flex justify-between mt-8 opacity-0 transition-opacity duration-500">
-                <button onclick="declineLicense()" class="btn-cli px-6 py-2 text-red-500 border-red-500 hover:bg-red-900 hover:text-white">
+                <button onclick="declineLicense()" class="btn-cli px-4 py-2 text-sm sm:px-6 sm:py-2 text-red-500 border-red-500 hover:bg-red-900 hover:text-white">
                     [ N ] DECLINE
                 </button>
-                <button onclick="acceptLicense()" class="btn-cli px-6 py-2 text-green-400 font-bold hover:bg-green-900 hover:text-white">
+                <button onclick="acceptLicense()" class="btn-cli px-4 py-2 text-sm sm:px-6 sm:py-2 text-green-400 font-bold hover:bg-green-900 hover:text-white">
                     [ Y ] ACCEPT
                 </button>
             </div>
@@ -459,9 +477,9 @@
     <!-- メインアプリ (初期は非表示) -->
     <div id="main-app" style="display: none;">
         <!-- ヘッダー -->
-        <header class="w-full max-w-5xl mb-6 flex flex-col sm:flex-row justify-between items-end terminal-box p-6 no-print gap-4">
+        <header class="w-full max-w-5xl mb-6 flex flex-col sm:flex-row justify-between items-end terminal-box p-4 sm:p-6 no-print gap-4">
             <div>
-                <h1 class="text-2xl sm:text-4xl font-bold tracking-widest blinking-cursor brand-text">
+                <h1 class="text-xl sm:text-4xl font-bold tracking-widest blinking-cursor brand-text">
                     SYSTEM: 88-WORKS SEAT MANAGER
                 </h1>
                 <p class="text-xs sm:text-sm opacity-80 mt-2 font-mono text-green-400">
@@ -471,38 +489,38 @@
                 </p>
             </div>
             <div class="flex flex-wrap gap-3 justify-end">
-                <button onclick="shuffleSeats()" class="btn-cli px-6 py-3 flex items-center gap-2 font-bold">
+                <button onclick="shuffleSeats()" class="btn-cli px-4 py-2 sm:px-6 sm:py-3 flex items-center gap-2 font-bold text-xs sm:text-base">
                     [ AUTO_SHUFFLE ]
                 </button>
-                <button onclick="downloadImage()" class="btn-cli px-6 py-3 flex items-center gap-2 font-bold">
+                <button onclick="downloadImage()" class="btn-cli px-4 py-2 sm:px-6 sm:py-3 flex items-center gap-2 font-bold text-xs sm:text-base">
                     [ EXPORT_IMAGE ]
                 </button>
             </div>
         </header>
 
         <!-- メインエリア -->
-        <main id="classroom-area" class="w-full max-w-5xl terminal-box p-4 sm:p-8 relative">
-            <div class="absolute top-3 left-4 text-[0.7rem] text-green-600 font-mono hidden sm:block leading-tight">
+        <main id="classroom-area" class="w-full max-w-5xl terminal-box p-2 sm:p-8 relative">
+            <div class="absolute top-1 left-2 sm:top-3 sm:left-4 text-[0.6rem] sm:text-[0.7rem] text-green-600 font-mono hidden sm:block leading-tight">
                 > DEPLOYED_BY: 88-WORKS<br>
                 > PROJECT_START: 2022<br>
                 > LATENCY: <span id="latency-val">--</span>ms
             </div>
 
-            <div id="seat-grid" class="grid grid-cols-6 gap-3 sm:gap-5 mb-8 mt-10 relative z-10">
+            <div id="seat-grid" class="grid grid-cols-6 gap-1 sm:gap-3 lg:gap-5 mb-8 mt-4 sm:mt-10 relative z-10">
                 <!-- JSで生成 -->
             </div>
 
             <div class="w-full flex justify-center mb-2 mt-6 relative z-10">
-                <div class="blackboard w-2/3 h-16 flex items-center justify-center tracking-widest">
+                <div class="blackboard w-3/4 sm:w-2/3 h-12 sm:h-16 flex items-center justify-center tracking-widest text-xs sm:text-base">
                     [ FRONT_AREA / WHITEBOARD ]
                 </div>
             </div>
 
             <div class="flex justify-between items-end mt-6 border-t border-green-900 pt-3">
-                <div class="text-xs text-green-600 font-mono">
+                <div class="text-xs text-green-600 font-mono hidden sm:block">
                     SECURE_CONNECTION: ENCRYPTED_BY_88WORKS
                 </div>
-                <div class="text-right text-xs sm:text-sm opacity-70 font-mono">
+                <div class="text-right text-[0.6rem] sm:text-xs sm:text-sm opacity-70 font-mono w-full sm:w-auto">
                     LAST_UPDATE: <span id="current-date"></span>
                 </div>
             </div>
@@ -511,7 +529,7 @@
         <!-- フッター: プロフィール & BGM -->
         <footer class="no-print">
             
-            <div class="profile-section w-full max-w-5xl terminal-box p-6 mb-4">
+            <div class="profile-section w-full max-w-5xl terminal-box p-4 sm:p-6 mb-4">
                 <div class="flex flex-col sm:flex-row items-center gap-6 w-full">
                     <!-- GIF Icon (Tenor Embed) - Cropped to Square -->
                     <div class="shrink-0 profile-container">
@@ -520,23 +538,23 @@
                     </div>
                     
                     <!-- Info -->
-                    <div class="font-mono text-sm sm:text-base flex-grow w-full">
+                    <div class="font-mono text-xs sm:text-sm md:text-base flex-grow w-full">
                         <div class="border-b border-green-800 pb-2 mb-2 text-green-400 font-bold">
                             >> DEVELOPER_PROFILE
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left sm:text-left">
                             <div>
                                 <span class="text-green-600">> NAME:</span> ISSA YAMANAKA<br>
                                 <span class="text-green-600">> ROLE:</span> ROOT OVERCLOCKER<br>
                                 <span class="text-green-600">> OS:</span> ARCH LINUX (BTW)
                             </div>
-                            <div>
+                            <div class="break-all">
                                 <span class="text-green-600">> GITHUB:</span> <a href="https://github.com/Anachira" target="_blank" class="hover:text-white underline">Anachira</a><br>
                                 <span class="text-green-600">> DISCORD:</span> hachiya_works<br>
                                 <span class="text-green-600">> EMAIL:</span> <a href="mailto:luruna_anachira.88works@outlook.com" class="hover:text-white underline">luruna...</a>
                             </div>
                         </div>
-                        <div class="mt-4 text-xs text-green-700">
+                        <div class="mt-4 text-[0.6rem] sm:text-xs text-green-700 text-center sm:text-right">
                             /* 88-WORKS PROJECT EST. 2022 */
                         </div>
                     </div>
@@ -556,14 +574,14 @@
 
     <!-- 編集モーダル -->
     <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-90 hidden items-center justify-center z-50 backdrop-blur-sm">
-        <div class="modal-bg p-8 w-96 shadow-2xl relative">
+        <div class="modal-bg p-6 sm:p-8 shadow-2xl relative">
             <div class="absolute top-0 left-0 w-full h-1 bg-green-500 box-shadow-glow"></div>
-            <h3 class="text-xl font-bold mb-6 flex items-center gap-2 border-b border-green-900 pb-3 text-white" style="text-shadow: 0 0 8px var(--main-color);">
+            <h3 class="text-lg sm:text-xl font-bold mb-6 flex items-center gap-2 border-b border-green-900 pb-3 text-white" style="text-shadow: 0 0 8px var(--main-color);">
                 >> EDIT_STUDENT_DATA
             </h3>
             <div class="mb-8">
                 <label class="block text-xs font-bold mb-2 text-green-400 font-mono">TARGET_NAME_INPUT:</label>
-                <input type="text" id="edit-name-input" class="w-full px-4 py-3 text-lg">
+                <input type="text" id="edit-name-input" class="w-full px-4 py-3 text-base sm:text-lg">
             </div>
             <div class="flex items-center mb-10 cursor-pointer p-2 border border-transparent hover:border-green-900 transition" onclick="document.getElementById('edit-lock-check').click()">
                 <input type="checkbox" id="edit-lock-check" class="h-5 w-5 bg-black border-green-500 rounded-none accent-green-500 cursor-pointer">
@@ -572,8 +590,8 @@
                 </label>
             </div>
             <div class="flex justify-end gap-4">
-                <button onclick="closeModal()" class="px-6 py-2 text-sm border border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white transition font-mono">CANCEL</button>
-                <button onclick="saveEdit()" class="btn-cli px-8 py-3 text-sm bg-green-900 bg-opacity-30 font-bold">SAVE_DATA</button>
+                <button onclick="closeModal()" class="px-4 py-2 sm:px-6 text-xs sm:text-sm border border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white transition font-mono">CANCEL</button>
+                <button onclick="saveEdit()" class="btn-cli px-6 py-2 sm:px-8 sm:py-3 text-xs sm:text-sm bg-green-900 bg-opacity-30 font-bold">SAVE_DATA</button>
             </div>
         </div>
     </div>
@@ -593,10 +611,6 @@
             { text: "WARNING: UNAUTHORIZED ACCESS IS STRICTLY PROHIBITED.", style: "text-green" },
             { text: "DETECTING USER PRIVILEGES...", style: "text-green" },
             { text: "ACCESS GRANTED: GUEST LEVEL 1", style: "text-green" },
-            { text: "", style: "" },
-            // ここにプレーヤーが重なるため空白行を設ける
-            { text: "", style: "" },
-            { text: "", style: "" }, 
             { text: "", style: "" },
             { text: "LICENSE AGREEMENT:", style: "text-green" },
             { text: "1. ALL DATA TRANSMISSIONS ARE ENCRYPTED.", style: "text-green" },
