@@ -10,25 +10,53 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+        // signInWithCustomToken を追加
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = JSON.parse(__firebase_config);
+        // 環境変数の有無で設定を切り替え
+        let firebaseConfig;
+        let appId;
+        let isCanvasEnv = false;
+
+        if (typeof __firebase_config !== 'undefined') {
+            // [Canvas環境] 内部プレビュー用の設定
+            firebaseConfig = JSON.parse(__firebase_config);
+            appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            isCanvasEnv = true;
+        } else {
+            // [本番環境] GitHub Pages等デプロイ用の設定 (あなたの設定)
+            firebaseConfig = {
+              apiKey: "AIzaSyB1INAQOnhKBW02En-FHNecXoJUNT-cAfU",
+              authDomain: "seatarrange.firebaseapp.com",
+              projectId: "seatarrange",
+              storageBucket: "seatarrange.firebasestorage.app",
+              messagingSenderId: "862438952644",
+              appId: "1:862438952644:web:86f41796b44f304da0c391",
+              measurementId: "G-CHMPH017HT"
+            };
+            appId = 'seat-shuffle-prod'; 
+        }
+
+        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-        // グローバル変数として公開（既存のロジックから呼び出すため）
+        
+        // グローバル変数として公開
         window.db = db;
         window.auth = auth;
         window.doc = doc;
         window.setDoc = setDoc;
         window.appId = appId;
+        window.isCanvasEnv = isCanvasEnv; // 環境フラグも公開
 
         // 認証と初期化
         const initAuth = async () => {
             try {
+                // Canvas環境でトークンがある場合はそれを使用、なければ匿名認証
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
@@ -53,14 +81,24 @@
         // リアルタイムリスナーの設定
         function setupRealtimeListener() {
             if (!auth.currentUser) return;
-            const seatsDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'seats', 'current_layout');
+            
+            let seatsDocRef;
+            if (window.isCanvasEnv) {
+                // Canvas環境用のパス (Rule 1準拠)
+                seatsDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'seats', 'current_layout');
+            } else {
+                // 本番環境用のパス
+                seatsDocRef = doc(db, 'seats_data', 'class_2-6');
+            }
 
             onSnapshot(seatsDocRef, (docSnapshot) => {
                 if (docSnapshot.exists()) {
                     // データがある場合は反映
                     const data = docSnapshot.data();
-                    window.updateSeatsFromCloud(data.seats);
-                    updateStatus("SYNCED", "green");
+                    if (data.seats) {
+                        window.updateSeatsFromCloud(data.seats);
+                        updateStatus("SYNCED", "green");
+                    }
                 } else {
                     // データがない場合は初期化（最初の1人）
                     updateStatus("INITIALIZING_DB...", "yellow");
@@ -413,7 +451,15 @@
         async function uploadSeatsToCloud(newSeats) {
             if (!window.db || !window.appId || !window.auth.currentUser) return; // authチェック追加
             try {
-                const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'seats', 'current_layout');
+                let docRef;
+                if (window.isCanvasEnv) {
+                    // Canvas環境用のパス (Rule 1準拠)
+                    docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'seats', 'current_layout');
+                } else {
+                    // 本番環境用のパス
+                    docRef = window.doc(window.db, 'seats_data', 'class_2-6');
+                }
+                
                 await window.setDoc(docRef, {
                     seats: newSeats,
                     lastUpdated: new Date().toISOString()
