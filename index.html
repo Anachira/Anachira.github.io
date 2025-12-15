@@ -3,1187 +3,1009 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>88-WORKS | SEAT MANAGER</title>
+    <title>SEAT WARS: SYSTEM ONLINE</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <!-- SoundCloud Widget API -->
-    <script src="https://w.soundcloud.com/player/api.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Kosugi+Maru&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     
-    <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, query, orderBy, limit, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // --- Firebase Config Handling ---
         let firebaseConfig;
-        let appId;
-        let isCanvasEnv = false;
-
         try {
-            if (typeof __firebase_config !== 'undefined') {
-                firebaseConfig = JSON.parse(__firebase_config);
-                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                isCanvasEnv = true;
-            } else {
-                firebaseConfig = {
-                  apiKey: "AIzaSyB1INAQOnhKBW02En-FHNecXoJUNT-cAfU",
-                  authDomain: "seatarrange.firebaseapp.com",
-                  projectId: "seatarrange",
-                  storageBucket: "seatarrange.firebasestorage.app",
-                  messagingSenderId: "862438952644",
-                  appId: "1:862438952644:web:86f41796b44f304da0c391",
-                  measurementId: "G-CHMPH017HT"
-                };
-                appId = 'seat-shuffle-prod'; 
+            firebaseConfig = JSON.parse(__firebase_config);
+        } catch (e) {
+            console.error("Firebase Config Error:", e);
+            firebaseConfig = { apiKey: "error", authDomain: "error", projectId: "error" };
+        }
+
+        // Global Variables Definition
+        window.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        window.BATTLE_DOC_ID = 'class_2-6_war_v7_multihack'; // FIX: Make global
+
+        // Initialize
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        // Expose to window for app logic
+        window.db = db;
+        window.auth = auth;
+        window.doc = doc;
+        window.setDoc = setDoc;
+        window.addDoc = addDoc;
+        window.collection = collection;
+        window.serverTimestamp = serverTimestamp;
+
+        // Auth Flow
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                window.updateConnectionStatus(true);
+            } catch (error) {
+                console.error("Auth Error:", error);
+                window.updateConnectionStatus(false);
             }
+        };
+        initAuth();
 
-            const app = initializeApp(firebaseConfig);
-            const auth = getAuth(app);
-            const db = getFirestore(app);
+        // FIX: Make global to avoid ReferenceError
+        window.updateConnectionStatus = function(isOnline) {
+            const el = document.getElementById('sys-status');
+            if (el) {
+                el.textContent = isOnline ? "SYSTEM ONLINE" : "OFFLINE";
+                el.className = isOnline ? "text-[10px] text-green-400 font-tech" : "text-[10px] text-red-500 font-tech animate-pulse";
+            }
+        }
+
+        // Listeners
+        onAuthStateChanged(auth, (user) => {
+            if (!user) return;
+            window.updateConnectionStatus(true);
             
-            window.db = db;
-            window.auth = auth;
-            window.doc = doc;
-            window.setDoc = setDoc;
-            window.getDoc = getDoc; // getDocを追加
-            window.addDoc = addDoc;
-            window.collection = collection;
-            window.query = query;
-            window.orderBy = orderBy;
-            window.limit = limit;
-            window.appId = appId;
-            window.isCanvasEnv = isCanvasEnv;
-
-            const initAuth = async () => {
-                try {
-                    updateStatus("AUTHENTICATING...", "yellow");
-                    if (isCanvasEnv && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                } catch (error) {
-                    console.error("Auth failed", error);
-                    updateStatus(`ERROR: ${error.code}`, "red");
+            // 1. Seat Data Listener
+            const seatsDocRef = doc(db, 'artifacts', window.appId, 'public', 'data', 'seats_data', window.BATTLE_DOC_ID);
+            onSnapshot(seatsDocRef, (snap) => {
+                if (snap.exists()) {
+                    window.updateBattleField(snap.data().seats);
+                } else {
+                    window.initializeFieldData();
                 }
-            };
-
-            initAuth();
-
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    console.log("User authenticated:", user.uid);
-                    // 認証完了後にリスナーを開始
-                    setupRealtimeListener();
-                    setupCommentsListener();
-                }
+            }, (err) => {
+                console.error("Seat Listener Error:", err);
+                window.updateConnectionStatus(false);
             });
 
-            function setupRealtimeListener() {
-                if (!auth.currentUser) return;
-                
-                let seatsDocRef;
-                if (window.isCanvasEnv) {
-                    seatsDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'seats', 'current_layout');
-                } else {
-                    seatsDocRef = doc(db, 'seats_data', 'class_2-6');
-                }
-
-                // リアルタイムリスナー設定
-                onSnapshot(seatsDocRef, (docSnapshot) => {
-                    if (docSnapshot.exists()) {
-                        // クラウドにデータがある場合 -> それを正として反映
-                        const data = docSnapshot.data();
-                        if (data.seats) {
-                            console.log("Loaded data from cloud");
-                            window.updateSeatsFromCloud(data.seats);
-                            updateStatus("SYSTEM ONLINE", "green");
-                        }
-                    } else {
-                        // クラウドにデータがない場合 -> 初回のみ初期データをアップロード
-                        console.log("No data found, initializing...");
-                        updateStatus("INITIALIZING DB...", "yellow");
-                        window.initializeCloudData();
-                    }
-                }, (error) => {
-                    console.error("Sync error", error);
-                    updateStatus(`SYNC ERROR: ${error.code}`, "red");
-                });
-            }
-
-            // コメント用リスナー
-            function setupCommentsListener() {
-                if (!auth.currentUser) return;
-
-                let commentsColRef;
-                if (window.isCanvasEnv) {
-                    commentsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'comments');
-                } else {
-                    commentsColRef = collection(db, 'seat_comments');
-                }
-                
-                const q = query(commentsColRef, orderBy("timestamp", "desc"), limit(50));
-
-                onSnapshot(q, (snapshot) => {
-                    const comments = [];
-                    snapshot.forEach((doc) => {
-                        comments.push(doc.data());
-                    });
-                    window.renderComments(comments);
-                }, (error) => {
-                    console.error("Comments sync error", error);
-                });
-            }
-
-        } catch (e) {
-            console.error("Initialization error", e);
-            updateStatus("INIT ERROR", "red");
-        }
-
-        function updateStatus(text, color) {
-            const statusEl = document.getElementById('connection-status');
-            if (statusEl) {
-                statusEl.innerText = text;
-                statusEl.className = `text-xs font-mono text-${color}-500 font-bold`;
-            }
-        }
+            // 2. Chat Data Listener
+            const chatsCollectionRef = collection(db, 'artifacts', window.appId, 'public', 'data', 'seat_battle_chats');
+            const q = query(chatsCollectionRef, orderBy("timestamp", "desc"), limit(50));
+            onSnapshot(q, (snapshot) => {
+                const chats = [];
+                snapshot.forEach(d => chats.push(d.data()));
+                window.updateChatLog(chats);
+            });
+        });
     </script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@700;900&display=swap');
-        
         :root {
-            --bg-color: #050505;
-            --main-color: #00ff41; 
-            --text-glow: #a8ffb6;
-            --dim-color: #008f11;
-            --alert-color: #ff3333;
+            --neon-blue: #00f0ff;
+            --neon-green: #0aff0a;
+            --neon-yellow: #fcee0a;
+            --neon-red: #ff003c;
+            --neon-purple: #bc13fe;
+            --bg-dark: #050505;
         }
 
         body {
-            font-family: 'Share Tech Mono', 'Noto Sans JP', monospace;
-            background-color: var(--bg-color);
-            color: var(--main-color);
-            background-image: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            background-size: 100% 2px, 3px 100%;
-            min-height: 100vh;
-            text-transform: uppercase;
-            display: flex;
-            flex-direction: column;
-            overflow-x: hidden; 
+            font-family: 'Kosugi Maru', sans-serif;
+            background-color: var(--bg-dark);
+            color: white;
+            overflow: hidden;
+            touch-action: manipulation;
+            user-select: none;
         }
 
-        /* ライセンス画面スタイル */
-        #license-overlay {
+        .cyber-grid {
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-color: #000;
-            z-index: 9999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 10px;
-            animation: turnOn 0.5s ease-out forwards;
+            top: 0; left: 0; width: 200%; height: 200%;
+            background-image: 
+                linear-gradient(rgba(188, 19, 254, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(188, 19, 254, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            transform: perspective(500px) rotateX(60deg) translateY(-100px) translateZ(-200px);
+            animation: grid-move 30s linear infinite;
+            z-index: -1;
+            pointer-events: none;
+        }
+        @keyframes grid-move {
+            0% { transform: perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px); }
+            100% { transform: perspective(500px) rotateX(60deg) translateY(40px) translateZ(-200px); }
         }
 
-        @keyframes turnOn {
-            0% { transform: scale(1, 0.002); opacity: 0; filter: brightness(30); }
-            50% { transform: scale(1, 0.002); opacity: 1; }
-            75% { transform: scale(1.1, 1); opacity: 1; }
-            100% { transform: scale(1, 1); opacity: 1; filter: brightness(1); }
+        .font-tech { font-family: 'Share Tech Mono', monospace; }
+        .font-impact { font-family: 'Black Ops One', cursive; }
+
+        .glass-panel {
+            background: rgba(10, 10, 15, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
-        .license-box {
-            max-width: 800px;
-            width: 100%;
-            max-height: 90vh; 
-            overflow-y: auto; 
-            border: 2px solid var(--main-color);
-            padding: 20px;
-            background: rgba(0, 10, 0, 0.95);
-            box-shadow: 0 0 20px var(--dim-color);
-            position: relative;
-        }
-
-        .license-box.alert-mode {
-            border-color: var(--alert-color);
-            box-shadow: 0 0 30px var(--alert-color);
-            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-        }
-
-        @keyframes shake {
-            10%, 90% { transform: translate3d(-1px, 0, 0); }
-            20%, 80% { transform: translate3d(2px, 0, 0); }
-            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-            40%, 60% { transform: translate3d(4px, 0, 0); }
-        }
-
-        .license-text-line {
-            line-height: 1.4;
-            white-space: pre-wrap;
-            margin-bottom: 4px;
-            opacity: 1;
-            color: #00ff41 !important;
-            text-shadow: 0 0 8px rgba(0, 255, 65, 0.6);
-            font-weight: bold;
-            font-size: 0.8rem; 
-        }
-        @media (min-width: 640px) {
-            .license-text-line {
-                font-size: 0.9rem;
-                margin-bottom: 5px;
-            }
-        }
-
-        .text-green { color: #00ff41 !important; text-shadow: 0 0 8px rgba(0, 255, 65, 0.6); }
-        .text-red { color: #ff3333 !important; text-shadow: 0 0 10px rgba(255, 0, 0, 0.8); }
-        .text-black-weight { font-weight: 900 !important; } 
-        
-        .typing-cursor::after {
-            content: '█';
-            animation: blink 0.8s step-end infinite;
-            color: var(--main-color);
-            margin-left: 5px;
-        }
-
-        .glitch-text {
-            animation: glitch 1s infinite linear alternate-reverse;
-        }
-        @keyframes glitch {
-            0% { transform: skew(0deg); opacity: 1; }
-            20% { transform: skew(-2deg); opacity: 0.8; }
-            40% { transform: skew(2deg); opacity: 1; }
-            60% { transform: skew(0deg); opacity: 0.9; }
-            80% { transform: skew(5deg); opacity: 1; }
-            100% { transform: skew(0deg); opacity: 1; }
-        }
-
-        .access-granted {
-            animation: accessGranted 1s forwards;
-        }
-        @keyframes accessGranted {
-            0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.1); filter: brightness(2); background-color: var(--main-color); color: #000; }
-            100% { opacity: 0; transform: scale(1.5); display: none; }
-        }
-
-        .access-denied {
-            border-color: var(--alert-color) !important;
-            color: var(--alert-color) !important;
-            box-shadow: 0 0 30px var(--alert-color) !important;
-        }
-
-        #main-app {
-            display: none;
-            width: 100%;
-            flex-direction: column;
-            align-items: center;
-            flex-grow: 1;
-            padding: 10px 0;
-            opacity: 0;
-            transition: opacity 1s;
-        }
-
-        .brand-text { text-shadow: 0 0 10px var(--main-color); }
-        
-        .user-badge {
-            border: 1px solid var(--main-color);
-            padding: 2px 8px;
-            background: rgba(0, 255, 65, 0.1);
-            font-size: 0.7rem;
-            letter-spacing: 1px;
-        }
-
-        footer {
-            margin-top: auto;
-            width: 100%;
-            max-width: 1024px;
-            border-top: 1px solid var(--dim-color);
-            padding: 20px 0; 
-            font-size: 0.75rem;
-            opacity: 0.9;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .profile-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-            width: 100%;
-            text-align: center;
-        }
-        
-        @media (min-width: 640px) {
-            .profile-section {
-                flex-direction: row;
-                justify-content: space-between;
-                text-align: left;
-                padding: 0 20px;
-            }
-        }
-
-        /* Tenor GIF用コンテナスタイル (修正版) */
-        .profile-container {
-            width: 150px;
-            height: 150px; 
-            border: 1px solid var(--main-color);
-            box-shadow: 0 0 15px var(--dim-color);
-            transition: all 0.3s;
-            border-radius: 0.5rem;
-            overflow: hidden; 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #000;
-        }
-        .profile-container:hover {
-            box-shadow: 0 0 20px var(--main-color);
-            transform: scale(1.05);
-        }
-
-        .terminal-box {
-            border: 1px solid var(--main-color);
-            background-color: rgba(0, 20, 0, 0.85);
-            box-shadow: 0 0 15px var(--dim-color);
-            position: relative;
-        }
-        
-        .terminal-box::before {
-            content: ''; position: absolute; top: -1px; left: -1px; width: 10px; height: 10px;
-            border-top: 2px solid var(--main-color); border-left: 2px solid var(--main-color);
-        }
-        .terminal-box::after {
-            content: ''; position: absolute; bottom: -1px; right: -1px; width: 10px; height: 10px;
-            border-bottom: 2px solid var(--main-color); border-right: 2px solid var(--main-color);
-        }
-
-        .seat {
-            aspect-ratio: 4/3;
-            cursor: pointer;
-            border: 1px solid var(--dim-color);
-            background: rgba(0, 10, 0, 0.7);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        /* Seat Styles */
+        .seat-card {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             position: relative;
             overflow: hidden;
+        }
+        .seat-card:active { transform: scale(0.95); }
+        
+        .seat-taken-me {
+            border: 2px solid var(--neon-blue);
+            background: rgba(0, 240, 255, 0.15);
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+        .seat-taken-enemy {
+            border: 1px solid #555;
+            background: rgba(50, 50, 50, 0.5);
+        }
+        .seat-shielded {
+            border: 2px solid var(--neon-green) !important;
+            background: rgba(10, 255, 10, 0.1) !important;
+            box-shadow: 0 0 10px var(--neon-green), inset 0 0 5px var(--neon-green);
+        }
+        .seat-vulnerable {
+            border: 2px solid var(--neon-red) !important;
+            background: rgba(255, 0, 60, 0.1) !important;
+        }
+        .seat-empty {
+            border: 1px dashed #444;
+            background: rgba(0,0,0,0.3);
+        }
+
+        .shield-bar-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: #333;
+        }
+        .shield-bar {
+            height: 100%;
+            background: var(--neon-green);
+            width: 100%;
+            transition: width 1s linear;
+        }
+
+        /* AP Gauge */
+        .ap-container {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
             display: flex;
+            gap: 4px;
+            z-index: 50;
+        }
+        .ap-block {
+            width: 30px;
+            height: 10px;
+            background: #333;
+            border: 1px solid #555;
+            transform: skewX(-20deg);
+            transition: all 0.3s;
+        }
+        .ap-block.active {
+            background: var(--neon-blue);
+            box-shadow: 0 0 10px var(--neon-blue);
+            border-color: #fff;
+        }
+
+        .screen {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            flex-direction: column;
+        }
+        .screen.active { display: flex; }
+
+        /* Hack Game UI */
+        .hack-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 60;
+            display: none;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
         }
-
-        .seat:hover {
-            border-color: var(--main-color);
-            box-shadow: inset 0 0 20px var(--dim-color);
-            background: rgba(0, 40, 0, 0.9);
-            z-index: 10;
-        }
-
-        .seat.dragging {
-            opacity: 0.5;
-            border: 2px dashed var(--main-color);
-        }
-
-        .seat-content {
-            pointer-events: none;
-            font-family: 'Noto Sans JP', sans-serif;
-            font-size: 0.9rem; 
-            font-weight: 700;
-            line-height: 1.3;
-            letter-spacing: 0.05em;
-            color: #ffffff;
-            text-shadow: 0 0 5px var(--main-color), 0 0 10px var(--dim-color);
+        .hack-content-area {
             width: 100%;
-            word-break: break-all;
-        }
-        @media (min-width: 640px) {
-            .seat-content {
-                font-size: 1.1rem;
-            }
-        }
-
-
-        .locked {
-            border-color: var(--alert-color) !important;
-            box-shadow: inset 0 0 10px rgba(100, 0, 0, 0.5);
-        }
-        .locked .seat-content {
-            text-shadow: 0 0 5px var(--alert-color);
-            color: #ffebeb;
-        }
-        .locked::after {
-            content: '[LOCKED]';
-            position: absolute;
-            top: 2px; right: 2px;
-            font-size: 0.5rem;
-            color: var(--alert-color);
-            font-family: 'Share Tech Mono', monospace;
-            opacity: 0.8;
-        }
-
-        .btn-cli {
-            background: rgba(0, 20, 0, 0.8);
-            border: 1px solid var(--main-color);
-            color: var(--main-color);
-            font-family: 'Share Tech Mono', monospace;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            transition: all 0.2s;
-        }
-        .btn-cli:hover {
-            background: var(--main-color);
-            color: #000;
-            box-shadow: 0 0 15px var(--main-color);
-            font-weight: bold;
-        }
-
-        .blackboard {
-            border: 1px solid var(--dim-color);
-            color: var(--dim-color);
-            font-size: 0.9rem;
-            font-weight: bold;
-            text-align: center;
-            background: repeating-linear-gradient(45deg, rgba(0,0,0,0.8), rgba(0,0,0,0.8) 10px, rgba(0,30,0,0.8) 10px, rgba(0,30,0,0.8) 20px);
-            text-shadow: 0 0 3px var(--dim-color);
-        }
-
-        .modal-bg {
-            background: rgba(5, 5, 5, 0.95);
-            border: 1px solid var(--main-color);
-            box-shadow: 0 0 30px rgba(0, 255, 65, 0.2);
-            width: 90%; /* スマホ対応 */
-            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
         }
         
-        input[type="text"] {
-            background: #000;
-            border: 1px solid var(--dim-color);
-            color: var(--main-color);
-            font-family: 'Noto Sans JP', monospace;
-            font-weight: bold;
-            font-size: 1.1rem;
+        /* Timing Game */
+        .hack-bar-container {
+            width: 80%;
+            height: 40px;
+            background: #111;
+            border: 2px solid #333;
+            position: relative;
+            margin: 20px 0;
+            overflow: hidden;
+            border-radius: 4px;
         }
-        input[type="text"]:focus {
-            outline: none;
-            border-color: var(--main-color);
-            box-shadow: 0 0 15px var(--dim-color);
+        .hack-target-zone {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            background: var(--neon-red);
+            box-shadow: 0 0 15px var(--neon-red);
+        }
+        .hack-cursor {
+            position: absolute;
+            top: -5px;
+            height: 50px;
+            width: 4px;
+            background: #fff;
+            box-shadow: 0 0 10px #fff;
         }
 
-        .blinking-cursor::after {
-            content: '_';
-            animation: blink 1s step-end infinite;
-            margin-left: 5px;
+        /* Rapid Game */
+        .rapid-gauge-container {
+            width: 60%;
+            height: 200px;
+            background: #111;
+            border: 2px solid #444;
+            position: relative;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
         }
-        @keyframes blink { 50% { opacity: 0; } }
-
-        /* コメント欄のスタイル */
-        .comments-section {
+        .rapid-gauge-fill {
             width: 100%;
-            max-width: 1024px;
+            background: linear-gradient(to top, #ff003c, #fcee0a);
+            height: 0%;
+            transition: height 0.05s linear;
+        }
+        .rapid-target-line {
+            position: absolute;
+            top: 20%;
+            left: 0;
+            width: 100%;
+            border-top: 2px dashed #fff;
+            text-align: right;
+        }
+
+        /* Memory Game */
+        .memory-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
             margin-bottom: 20px;
         }
-        
-        .comments-list {
-            height: 300px;
-            overflow-y: auto;
-            background: rgba(0, 10, 0, 0.5);
-            border-top: 1px solid var(--dim-color);
-            padding: 10px;
-            font-family: 'Share Tech Mono', 'Noto Sans JP', monospace;
-            font-size: 0.85rem;
+        .memory-btn {
+            width: 80px;
+            height: 80px;
+            background: #222;
+            border: 2px solid #444;
+            border-radius: 8px;
+            transition: all 0.1s;
+        }
+        .memory-btn.flash {
+            background: #fff;
+            box-shadow: 0 0 20px #fff;
+            border-color: #fff;
+        }
+        .memory-btn:active {
+            transform: scale(0.95);
         }
 
-        .comment-item {
-            margin-bottom: 8px;
-            padding-bottom: 8px;
-            border-bottom: 1px dashed var(--dim-color);
-            word-break: break-all;
+        .hack-stage-indicator {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
         }
-        
-        .comment-time {
-            color: var(--dim-color);
-            font-size: 0.7rem;
-            margin-right: 5px;
+        .hack-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #333;
+            border: 1px solid #555;
         }
-        
-        .comment-user {
-            color: var(--main-color);
-            font-weight: bold;
-            margin-right: 5px;
-        }
+        .hack-dot.active { background: var(--neon-yellow); box-shadow: 0 0 10px var(--neon-yellow); border-color: #fff; }
+        .hack-dot.done { background: var(--neon-green); box-shadow: 0 0 10px var(--neon-green); border-color: #fff; }
 
-        .comment-text {
-            color: #fff;
-        }
-        
-        /* 萌えGIFアイコン（コメント欄用） */
-        .moe-icon {
-            width: 50px;
-            height: 50px;
-            border: 1px solid var(--main-color);
-            border-radius: 4px;
-            overflow: hidden;
-            margin-right: 10px;
-        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--neon-blue); }
 
-        @media print {
-            body { background: white; color: black; background-image: none; }
-            .seat { border: 2px solid #000; color: #000; background: white; }
-            .seat-content { color: #000; text-shadow: none; font-weight: bold; }
-            .terminal-box { border: 2px solid #000; box-shadow: none; background: white; }
-            .no-print { display: none; }
-            .locked::after { color: #000; }
-            footer { display: none; }
-            #license-overlay { display: none; }
-            #main-app { display: flex !important; opacity: 1 !important; }
-            #bgm-player-container { display: none; }
+        .glitch-text { animation: glitch-skew 1s infinite linear alternate-reverse; }
+        @keyframes glitch-skew {
+            0% { transform: skew(0deg); } 20% { transform: skew(-2deg); } 40% { transform: skew(2deg); } 60% { transform: skew(0deg); } 80% { transform: skew(1deg); } 100% { transform: skew(0deg); }
         }
     </style>
 </head>
 <body>
 
-    <!-- ライセンス画面 (オーバーレイ) -->
-    <div id="license-overlay">
-        <div class="license-box">
-            <h2 class="text-xl font-bold mb-4 border-b border-green-700 pb-2 text-green-400">>> SYSTEM_BOOT: 88-WORKS_KERNEL</h2>
-            <div id="license-text-container" class="font-mono"></div>
-            
-            <div id="license-buttons" class="flex justify-between mt-8 opacity-0 transition-opacity duration-500">
-                <button onclick="declineLicense()" class="btn-cli px-4 py-2 text-sm sm:px-6 sm:py-2 text-red-500 border-red-500 hover:bg-red-900 hover:text-white">
-                    [ N ] DECLINE
-                </button>
-                <button onclick="acceptLicense()" class="btn-cli px-4 py-2 text-sm sm:px-6 sm:py-2 text-green-400 font-bold hover:bg-green-900 hover:text-white">
-                    [ Y ] ACCEPT
-                </button>
-            </div>
+    <div class="cyber-grid"></div>
+
+    <!-- Intro -->
+    <div id="screen-intro" class="screen active justify-center items-center z-50 bg-black">
+        <div class="relative w-full max-w-lg text-center">
+            <div class="font-tech text-neon-purple text-sm mb-2 tracking-[0.5em] opacity-0" id="intro-sub">PROJECT: CLASS 2-6 v7</div>
+            <h1 class="font-impact text-6xl md:text-8xl text-white mb-4 glitch-text opacity-0" id="intro-title">SEAT WARS</h1>
+            <p class="text-neon-green font-bold text-sm mb-8 tracking-widest opacity-0" id="intro-ver">PROTOCOL: MULTI-VECTOR ATTACK</p>
+            <button id="start-btn" class="hidden mt-12 px-8 py-4 border-2 border-white text-white font-bold tracking-widest hover:bg-white hover:text-black transition-all duration-300 font-tech mx-auto group relative overflow-hidden">
+                <span class="relative z-10">INITIALIZE</span>
+                <div class="absolute top-0 left-0 w-full h-full bg-purple-600 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-200"></div>
+            </button>
         </div>
     </div>
 
-    <!-- メインアプリ (初期は非表示) -->
-    <div id="main-app" style="display: none;">
-        <!-- ヘッダー -->
-        <header class="w-full max-w-5xl mb-6 flex flex-col sm:flex-row justify-between items-end terminal-box p-4 sm:p-6 no-print gap-4">
+    <!-- Char Select -->
+    <div id="screen-char-select" class="screen justify-center items-center z-40 bg-black/90">
+        <div class="w-full max-w-3xl p-6 h-full flex flex-col">
+            <h2 class="text-3xl font-impact text-purple-400 mb-2 text-center">SELECT IDENTITY</h2>
+            <div class="flex-1 overflow-y-auto grid grid-cols-2 md:grid-cols-4 gap-4 p-2" id="char-grid"></div>
+        </div>
+    </div>
+
+    <!-- Battle -->
+    <div id="screen-battle" class="screen z-30">
+        <header class="h-16 glass-panel flex justify-between items-center px-4 border-b border-gray-700 shrink-0">
             <div>
-                <h1 class="text-xl sm:text-4xl font-bold tracking-widest blinking-cursor brand-text">
-                    SYSTEM: 88-WORKS SEAT MANAGER
-                </h1>
-                <p class="text-xs sm:text-sm opacity-80 mt-2 font-mono text-green-400">
-                    > ADMIN: <span class="user-badge">ROOT OVERCLOCKER</span><br>
-                    > BUILD: 88-WORKS_CORE_V2022<br>
-                    > STATUS: <span id="connection-status" class="text-yellow-500">CONNECTING...</span>
-                </p>
+                <div id="sys-status" class="text-[10px] text-gray-400 font-tech animate-pulse">CONNECTING...</div>
+                <div class="text-xl font-impact text-purple-500 tracking-wider">SEAT WARS</div>
             </div>
-            <div class="flex flex-wrap gap-3 justify-end">
-                <button onclick="shuffleSeats()" class="btn-cli px-4 py-2 sm:px-6 sm:py-3 flex items-center gap-2 font-bold text-xs sm:text-base">
-                    [ AUTO_SHUFFLE ]
-                </button>
-                <button onclick="downloadImage()" class="btn-cli px-4 py-2 sm:px-6 sm:py-3 flex items-center gap-2 font-bold text-xs sm:text-base">
-                    [ EXPORT_IMAGE ]
-                </button>
-                <!-- 規定閲覧ボタン -->
-                <button onclick="viewRegulations()" class="btn-cli px-4 py-2 sm:px-6 sm:py-3 flex items-center gap-2 font-bold text-xs sm:text-base">
-                    [ RULES_PDF ]
-                </button>
+            <div class="text-right">
+                <div class="text-[10px] text-purple-400 font-tech">PILOT</div>
+                <div id="my-name-display" class="font-bold text-white">UNKNOWN</div>
             </div>
         </header>
 
-        <!-- メインエリア -->
-        <main id="classroom-area" class="w-full max-w-5xl terminal-box p-2 sm:p-8 relative">
-            <div class="absolute top-1 left-2 sm:top-3 sm:left-4 text-[0.6rem] sm:text-[0.7rem] text-green-600 font-mono hidden sm:block leading-tight">
-                > DEPLOYED_BY: 88-WORKS<br>
-                > PROJECT_START: 2022<br>
-                > LATENCY: <span id="latency-val">--</span>ms
-            </div>
-
-            <div id="seat-grid" class="grid grid-cols-6 gap-1 sm:gap-3 lg:gap-5 mb-8 mt-4 sm:mt-10 relative z-10">
-                <!-- JSで生成 -->
-            </div>
-
-            <div class="w-full flex justify-center mb-2 mt-6 relative z-10">
-                <div class="blackboard w-3/4 sm:w-2/3 h-12 sm:h-16 flex items-center justify-center tracking-widest text-xs sm:text-base">
-                    [ FRONT_AREA / WHITEBOARD ]
+        <div class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+            <!-- Left: Battlefield -->
+            <div class="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col items-center justify-center relative bg-gradient-to-b from-transparent to-purple-900/10">
+                <div class="w-2/3 h-8 bg-gray-800 border border-gray-600 mb-8 flex items-center justify-center text-gray-500 text-xs font-tech tracking-widest">
+                    BLACKBOARD AREA
                 </div>
+                <div id="seat-container" class="grid grid-cols-6 gap-2 md:gap-4 w-full max-w-4xl aspect-[4/3]"></div>
             </div>
 
-            <div class="flex justify-between items-end mt-6 border-t border-green-900 pt-3">
-                <div class="text-xs text-green-600 font-mono hidden sm:block">
-                    SECURE_CONNECTION: ENCRYPTED_BY_88WORKS
-                </div>
-                <div class="text-right text-[0.6rem] sm:text-xs sm:text-sm opacity-70 font-mono w-full sm:w-auto">
-                    LAST_UPDATE: <span id="current-date"></span>
-                </div>
+            <!-- AP Gauge -->
+            <div class="ap-container">
+                <div class="text-xs font-tech text-gray-400 self-center mr-2">AP</div>
+                <div id="ap-1" class="ap-block active"></div>
+                <div id="ap-2" class="ap-block active"></div>
+                <div id="ap-3" class="ap-block active"></div>
             </div>
-        </main>
 
-        <!-- コメント欄 (追加) -->
-        <div class="comments-section terminal-box no-print">
-            <div class="p-4 bg-black/50 border-b border-green-900 flex justify-between items-center">
-                <div class="flex items-center">
-                    <div class="moe-icon mr-3">
-                        <img style="display: block;-webkit-user-select: none;margin: auto; width: auto; height: 100%; object-fit: contain;" src="https://i.ppy.sh/c00a2158b578c2bee7a261f474af0d978642df3f/68747470733a2f2f696d6775722d617263686976652e7070792e73682f433047795236742e676966">
+            <!-- Right: Logs & Chat -->
+            <div class="h-1/3 md:h-full md:w-80 glass-panel border-t md:border-t-0 md:border-l border-gray-700 flex flex-col">
+                <div class="flex border-b border-gray-700">
+                    <button onclick="switchTab('log')" id="tab-log" class="flex-1 py-2 text-xs font-bold text-center bg-gray-800 text-gray-400">LOG</button>
+                    <button onclick="switchTab('chat')" id="tab-chat" class="flex-1 py-2 text-xs font-bold text-center bg-gray-900 text-blue-400 border-b-2 border-blue-400">CHAT</button>
+                </div>
+                <div id="panel-chat" class="flex-1 flex flex-col overflow-hidden">
+                    <div id="chat-messages" class="flex-1 overflow-y-auto p-2 space-y-2 font-xs"></div>
+                    <div class="p-2 bg-black border-t border-gray-800 flex gap-2">
+                        <input type="text" id="chat-input" class="flex-1 bg-gray-900 border border-gray-700 text-white text-sm px-3 py-2 outline-none focus:border-blue-500" placeholder="メッセージ..." onkeypress="if(event.key === 'Enter') sendChat()">
+                        <button onclick="sendChat()" class="bg-blue-600 text-white px-4 font-bold text-xs hover:bg-blue-500">SEND</button>
                     </div>
-                    <h3 class="text-lg font-bold text-green-400">>> CHAT_LOGS</h3>
                 </div>
-                <span class="text-xs text-green-800">REALTIME_MESSAGING</span>
-            </div>
-            
-            <div id="comments-list" class="comments-list">
-                <!-- JSでコメントを表示 -->
-                <div class="text-center text-green-800 mt-10">LOADING_LOGS...</div>
-            </div>
-
-            <div class="p-4 flex gap-2 items-center bg-black/80">
-                <span class="text-green-600 font-bold">></span>
-                <input type="text" id="comment-user" placeholder="USER_NAME" class="w-1/3 sm:w-1/4 px-2 py-1 text-sm bg-black border border-green-800 text-green-400 focus:border-green-400 outline-none" value="ANONYMOUS">
-                <input type="text" id="comment-input" placeholder="ENTER_MESSAGE..." class="flex-grow px-2 py-1 text-sm bg-black border border-green-800 text-green-400 focus:border-green-400 outline-none">
-                <button onclick="postComment()" class="btn-cli px-3 py-1 text-sm font-bold bg-green-900/30 hover:bg-green-800/50">SEND</button>
+                <div id="panel-log" class="flex-1 flex flex-col overflow-hidden hidden bg-black/50">
+                    <div id="log-messages" class="flex-1 overflow-y-auto p-2 space-y-1 font-tech text-xs text-green-400"></div>
+                </div>
             </div>
         </div>
-
-        <!-- フッター: プロフィール & BGM -->
-        <footer class="no-print">
-            
-            <div class="profile-section w-full max-w-5xl terminal-box p-4 sm:p-6 mb-4">
-                <div class="flex flex-col sm:flex-row items-center gap-6 w-full">
-                    <!-- GIF Icon (Tenor Embed) - Cropped to Square -->
-                    <div class="shrink-0 profile-container">
-                        <!-- Imouto Sae Ireba Ii GIF (Updated via iframe for better control/sizing) -->
-                        <iframe src="https://giphy.com/embed/GT46Efqk6oPBsGeRK7" width="100%" height="100%" style="pointer-events: none;" frameBorder="0" class="giphy-embed" allowFullScreen></iframe>
-                    </div>
-                    
-                    <!-- Info -->
-                    <div class="font-mono text-xs sm:text-sm md:text-base flex-grow w-full">
-                        <div class="border-b border-green-800 pb-2 mb-2 text-green-400 font-bold">
-                            >> DEVELOPER_PROFILE
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left sm:text-left">
-                            <div>
-                                <span class="text-green-600">> NAME:</span> ISSA YAMANAKA<br>
-                                <span class="text-green-600">> ROLE:</span> ROOT OVERCLOCKER<br>
-                                <span class="text-green-600">> OS:</span> ARCH LINUX (BTW)
-                            </div>
-                            <div class="break-all">
-                                <span class="text-green-600">> GITHUB:</span> <a href="https://github.com/Anachira" target="_blank" class="hover:text-white underline">Anachira</a><br>
-                                <span class="text-green-600">> DISCORD:</span> hachiya_works<br>
-                                <span class="text-green-600">> EMAIL:</span> <a href="mailto:luruna_anachira.88works@outlook.com" class="hover:text-white underline">luruna...</a>
-                            </div>
-                        </div>
-                        <div class="mt-4 text-[0.6rem] sm:text-xs text-green-700 text-center sm:text-right">
-                            /* 88-WORKS PROJECT EST. 2022 */
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- BGM Player (Embedded in Footer) -->
-            <div class="w-full max-w-5xl terminal-box p-2">
-                <div class="text-[0.6rem] text-green-800 font-mono mb-1 pl-2">> BACKGROUND_AUDIO_STREAM</div>
-                <iframe id="sc-widget" width="100%" height="100" scrolling="no" frameborder="no" allow="autoplay" 
-                    src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/tartrate/fire-the-daybreak&color=%2300ff41&auto_play=false&hide_related=false&show_comments=false&show_user=true&show_reposts=false&show_teaser=true&visual=false">
-                </iframe>
-            </div>
-
-        </footer>
+        <button onclick="toggleRules()" class="absolute bottom-4 left-4 w-10 h-10 rounded-full border border-white text-white flex items-center justify-center font-bold hover:bg-white hover:text-black z-50 text-lg">?</button>
     </div>
 
-    <!-- 編集モーダル -->
-    <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-90 hidden items-center justify-center z-50 backdrop-blur-sm">
-        <div class="modal-bg p-6 sm:p-8 shadow-2xl relative">
-            <div class="absolute top-0 left-0 w-full h-1 bg-green-500 box-shadow-glow"></div>
-            <h3 class="text-lg sm:text-xl font-bold mb-6 flex items-center gap-2 border-b border-green-900 pb-3 text-white" style="text-shadow: 0 0 8px var(--main-color);">
-                >> EDIT_STUDENT_DATA
-            </h3>
-            <div class="mb-8">
-                <label class="block text-xs font-bold mb-2 text-green-400 font-mono">TARGET_NAME_INPUT:</label>
-                <input type="text" id="edit-name-input" class="w-full px-4 py-3 text-base sm:text-lg">
+    <!-- Hack Mini Game Modal -->
+    <div id="hack-ui" class="hack-overlay">
+        <h2 id="hack-title" class="text-3xl font-impact text-white mb-2 glitch-text">BREACH PROTOCOL</h2>
+        <p id="hack-desc" class="text-purple-300 font-tech text-xs mb-8">LOADING...</p>
+        
+        <div class="hack-stage-indicator">
+            <div id="hack-stage-1" class="hack-dot active"></div>
+            <div id="hack-stage-2" class="hack-dot"></div>
+            <div id="hack-stage-3" class="hack-dot"></div>
+        </div>
+
+        <div id="hack-game-area" class="hack-content-area">
+            <!-- Dynamic Content -->
+        </div>
+        
+        <button id="hack-btn" class="mt-8 px-12 py-6 bg-red-600 text-white font-bold text-xl border-2 border-red-400 hover:bg-red-500 active:scale-95 transition-transform font-tech shadow-[0_0_20px_rgba(255,0,0,0.5)]">
+            EXECUTE
+        </button>
+    </div>
+
+    <!-- Hack Confirm Modal -->
+    <div id="modal-hack-confirm" class="fixed inset-0 bg-black/90 z-[100] hidden items-center justify-center p-4">
+        <div class="max-w-md w-full glass-panel p-6 border border-red-500 relative shadow-[0_0_30px_rgba(255,0,0,0.3)]">
+            <h3 class="text-xl font-impact text-red-500 mb-4">BREACH DETECTED</h3>
+            <p class="text-gray-300 mb-4">ターゲットは<span class="text-green-400">シールド保護</span>されています。<br>ハッキングを実行しますか？</p>
+            <div class="bg-gray-900 p-3 mb-6 rounded border border-gray-700">
+                <div class="flex justify-between text-xs text-gray-400 mb-1">
+                    <span>REQ. AP</span>
+                    <span>TYPE</span>
+                </div>
+                <div class="flex justify-between font-bold">
+                    <span class="text-blue-400">2 AP</span>
+                    <span class="text-purple-400">RANDOM</span>
+                </div>
             </div>
-            <div class="flex items-center mb-10 cursor-pointer p-2 border border-transparent hover:border-green-900 transition" onclick="document.getElementById('edit-lock-check').click()">
-                <input type="checkbox" id="edit-lock-check" class="h-5 w-5 bg-black border-green-500 rounded-none accent-green-500 cursor-pointer">
-                <label for="edit-lock-check" class="ml-4 block text-sm font-bold cursor-pointer select-none text-white">
-                    ENABLE_POSITION_LOCK
-                </label>
+            <div class="flex gap-4">
+                <button onclick="closeHackConfirm()" class="flex-1 py-3 border border-gray-600 text-gray-400 hover:bg-gray-800 font-tech">ABORT</button>
+                <button id="btn-hack-start" class="flex-1 py-3 bg-red-600 text-white font-bold hover:bg-red-500 font-tech shadow-[0_0_10px_rgba(255,0,0,0.5)]">INITIATE</button>
             </div>
-            <div class="flex justify-end gap-4">
-                <button onclick="closeModal()" class="px-4 py-2 sm:px-6 text-xs sm:text-sm border border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white transition font-mono">CANCEL</button>
-                <button onclick="saveEdit()" class="btn-cli px-6 py-2 sm:px-8 sm:py-3 text-xs sm:text-sm bg-green-900 bg-opacity-30 font-bold">SAVE_DATA</button>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-rules" class="fixed inset-0 bg-black/90 z-[100] hidden items-center justify-center p-4" onclick="toggleRules()">
+        <div class="max-w-md w-full glass-panel p-6 border border-purple-500 relative" onclick="event.stopPropagation()">
+            <h3 class="text-2xl font-impact text-purple-500 mb-4">RULES v7</h3>
+            <ul class="list-disc pl-5 space-y-3 text-sm text-gray-300">
+                <li><strong class="text-green-400">シールド（3分）:</strong> 席確保後の3分間は通常手段では奪われない。</li>
+                <li><strong class="text-red-400">ランダムハック:</strong> シールド中の席はハッキングで強奪可能（2 AP）。ミニゲームは3種類からランダムで選ばれる。</li>
+                <li><strong class="text-purple-400">ミニゲーム:</strong><br>
+                    🔵 <strong>MEMORY:</strong> 光る順番を覚えろ<br>
+                    🔴 <strong>RAPID:</strong> ゲージが尽きる前に連打しろ<br>
+                    🟣 <strong>TIMING:</strong> 赤いゾーンで止めろ
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="modal-confirm" class="fixed inset-0 bg-black/80 z-[100] hidden items-center justify-center p-4">
+        <div class="max-w-md w-full glass-panel p-6 border border-blue-500 relative">
+            <h3 class="text-xl font-impact text-blue-400 mb-4">CONFIRM IDENTITY</h3>
+            <p id="confirm-name-display" class="text-2xl font-bold text-white mb-6 p-2 bg-gray-800 border-l-4 border-blue-500 pl-4 break-all"></p>
+            <div class="flex gap-4">
+                <button onclick="closeConfirm()" class="flex-1 py-3 border border-gray-600 text-gray-400">CANCEL</button>
+                <button id="btn-confirm-yes" class="flex-1 py-3 bg-blue-600 text-white font-bold">EXECUTE</button>
             </div>
         </div>
     </div>
 
     <script>
-        // --- SoundCloud Loop Script ---
-        const iframeElement = document.getElementById('sc-widget');
-        const widget = SC.Widget(iframeElement);
+        // CONFIG
+        const PROTECTION_TIME_MS = 180000; // 3 min
+        const AP_RECOVERY_MS = 5000; 
+        const MAX_AP = 3;
+        const HACK_COST = 2;
+
+        const classMembers = [
+            "田島 大暉", "河田 愛子", "山中 壱磋", "遠藤 結衣", "大谷 和輝", "中村 颯南",
+            "大曽根 維月", "藤澤 志帆", "園部 可憐", "田家 瑶姫", "猪野 夢奈", "丸山 晴生",
+            "山崎 しおん", "小嶋 杏奈", "佐藤 璃音", "渡邉 美空", "会田 心穏", "尾形 勇飛",
+            "相場 日菜詩", "齋藤 優", "小川 快晴", "水口 夏悟", "佐々木 琉斗", "大川 める",
+            "岡田 悠斗", "室井 陽人", "海老原 穂鷹", "内藤 倖一朗", "薄井 駿介", "小林 智宥",
+            "有年 禅", "馬場 美幸", "鈴木 杏奈", "秋葉 心愛"
+        ].sort();
+
+        let appState = {
+            me: null,
+            seats: Array(36).fill(null).map((_, i) => ({ id: i, owner: null, timestamp: 0 })),
+            ap: MAX_AP
+        };
         
-        widget.bind(SC.Widget.Events.FINISH, function() {
-            widget.seekTo(0);
-            widget.play();
-        });
+        let pendingNameSelection = null;
+        let pendingHackIndex = -1;
+        
+        // Hack Game State
+        let hackState = {
+            active: false,
+            targetSeatIndex: -1,
+            stage: 0,
+            gameType: 'timing', // 'timing', 'rapid', 'memory'
+            // Timing
+            cursorPos: 0, direction: 1, speed: 1, targetStart: 0, targetWidth: 20,
+            // Rapid
+            rapidProgress: 0, rapidDecay: 0.5,
+            // Memory
+            sequence: [], playerInput: [], showingSeq: false,
+            animId: null
+        };
 
-        // --- 規定書閲覧機能 ---
-        function viewRegulations() {
-            const regulationsText = `
-                <div style="font-family: 'Noto Sans JP', sans-serif; padding: 40px; color: black;">
-                    <h1 style="text-align: center; border-bottom: 2px solid black; padding-bottom: 10px;">学級座席配置変更に関する規定</h1>
-                    <div style="text-align: right; margin-top: 10px; font-size: 0.9em;">
-                        制定:2025年12月<br>施行:宇都宮短期大学付属高等学校2年6組
-                    </div>
-                    
-                    <h3 style="margin-top: 20px;">第1条(目的)</h3>
-                    <p>本規定は、2年6組(以下「本学級」という)における生徒の座席配置の変更(以下「席替え」という)に関する手続き、基準、および決定プロセスを厳格に定め、もって学習環境の適正化および公平性の維持を目的とする。</p>
-                    
-                    <h3>第2条(席替えの要件)</h3>
-                    <p>席替えの申請は、以下の各号のいずれかに該当する正当な事由がある場合に限り、これを行うことができる。</p>
-                    <ol style="margin-left: 20px;">
-                        <li>健康上の事由(視力、聴力、身体的障害等により、特定の座席では学習活動に著しい支障を来す場合)</li>
-                        <li>学習指導上の必要性 (担任または教科担当教員が、特定の生徒間の配置変更を必要と認めた場合)</li>
-                        <li>その他、担任がやむを得ない事情と認めた場合 ※ 単なる交友関係の希望、私的な選り好みによる申請は一切受理しない。</li>
-                    </ol>
-
-                    <h3>第3条(申請手続き)</h3>
-                    <p>座席の変更を希望する生徒(以下「申請者」という)は、以下の書類を完備し、担任へ提出しなければならない。</p>
-                    <ol style="margin-left: 20px;">
-                        <li>座席変更申請書(様式第1号)</li>
-                        <li>証憑書類(健康上の事由の場合、診断書またはそれに準ずる証明が望ましい。ただし、明らかな視力低下等は担任の確認をもって代えることができる。)</li>
-                        <li>座席交換承諾書(様式第2号) (特定の他生徒と座席を交換する場合に限る)</li>
-                    </ol>
-
-                    <h3>第4条(審査および承認)</h3>
-                    <p>担任は、提出された申請書類に基づき厳正な審査を行う。審査の結果、変更が妥当であると認められた場合、担任は決済印を押印し、これを承認する。</p>
-
-                    <h3>第5条(執行および効力発生)</h3>
-                    <p>承認後、担任は座席指定変更通知書(様式第3号) を発行する。当該座席移動は、通知書に記載された「変更適用日」をもって効力を生じるものとし、申請者は速やかに指定された座席へ移動し、物品等の整理を行わなければならない。</p>
-
-                    <h3>第6条(原状回復の義務)</h3>
-                    <p>変更後の座席において、授業態度や学習成果に悪影響が生じたと担任が判断した場合、担任は、原状(変更前の座席) への復帰を命じることができる。</p>
-                    
-                    <div style="margin-top: 50px; text-align: right;">以上</div>
-                </div>
-            `;
+        window.onload = () => {
+            const tl = anime.timeline({ easing: 'easeOutExpo', duration: 750 });
+            tl.add({ targets: '#intro-sub', opacity: [0, 1], translateY: [20, 0] })
+              .add({ targets: '#intro-title', opacity: [0, 1], scale: [3, 1], duration: 1000 })
+              .add({ targets: '#intro-ver', opacity: [0, 1], delay: 200 })
+              .add({ targets: '#start-btn', opacity: [0, 1], translateY: [20, 0], begin: () => document.getElementById('start-btn').classList.remove('hidden') });
             
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <html>
-                    <head>
-                        <title>学級座席配置変更に関する規定</title>
-                        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
-                        <style>
-                            @media print { 
-                                .no-print { display: none; } 
-                                body { margin: 0; padding: 0; }
-                            }
-                            body { background-color: #f0f0f0; margin: 0; display: flex; justify-content: center; }
-                            .page { background: white; width: 210mm; min-height: 297mm; box-shadow: 0 0 10px rgba(0,0,0,0.1); margin: 20px; }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="no-print" style="position: fixed; top: 10px; right: 10px;">
-                            <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px;">PDF保存 / 印刷</button>
-                        </div>
-                        <div class="page">
-                            ${regulationsText}
-                        </div>
-                    </body>
-                </html>
-            `);
-            printWindow.document.close();
-        }
+            document.getElementById('start-btn').onclick = () => {
+                showScreen('screen-char-select');
+                renderCharSelect();
+            };
 
-        // --- コメント機能 ---
-        async function postComment() {
-            const input = document.getElementById('comment-input');
-            const user = document.getElementById('comment-user');
-            const text = input.value.trim();
-            const username = user.value.trim() || 'ANONYMOUS';
-
-            if (!text) return;
-            if (!window.auth.currentUser) {
-                alert("SERVER_ERROR: AUTH_REQUIRED");
-                return;
-            }
-
-            try {
-                let commentsColRef;
-                if (window.isCanvasEnv) {
-                    commentsColRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'comments');
-                } else {
-                    commentsColRef = window.collection(window.db, 'seat_comments');
+            // Hack Action Button
+            const hackBtn = document.getElementById('hack-btn');
+            hackBtn.addEventListener('touchstart', (e) => { e.preventDefault(); handleHackAction(); });
+            hackBtn.addEventListener('click', handleHackAction);
+            
+            // Hack Confirm Button
+            document.getElementById('btn-hack-start').onclick = () => {
+                if(pendingHackIndex !== -1) {
+                    const idx = pendingHackIndex; 
+                    closeHackConfirm();
+                    startHackGame(idx);
                 }
+            };
+        };
 
-                await window.addDoc(commentsColRef, {
-                    text: text,
-                    user: username,
-                    timestamp: new Date().toISOString()
-                });
-
-                input.value = ''; // Clear input
-            } catch (e) {
-                console.error("Post failed", e);
-                alert("ERROR: MESSAGE_SEND_FAILED");
-            }
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
         }
 
-        // コメント描画
-        window.renderComments = function(comments) {
-            const list = document.getElementById('comments-list');
-            list.innerHTML = '';
-
-            if (comments.length === 0) {
-                list.innerHTML = '<div class="text-center text-green-900 mt-4">NO_LOGS_FOUND</div>';
-                return;
-            }
-
-            // 新しい順で来るが、表示は古い順（上から）または新しい順（上から）どちらでも可
-            // ここではチャットっぽく新しいものを上にします
-            comments.forEach(c => {
-                const item = document.createElement('div');
-                item.className = 'comment-item';
-                
-                // 時間フォーマット (HH:MM:SS)
-                const date = new Date(c.timestamp);
-                const timeStr = date.toLocaleTimeString('ja-JP', { hour12: false });
-
-                item.innerHTML = `
-                    <span class="comment-time">[${timeStr}]</span>
-                    <span class="comment-user"><${c.user}></span>
-                    <span class="comment-text">${c.text}</span>
-                `;
-                list.appendChild(item);
-            });
-        }
-
-        // Enterキーで送信
-        document.getElementById('comment-input').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                postComment();
-            }
-        });
-
-
-        // --- ライセンス画面の処理 ---
-        const licenseData = [
-            { text: "WARNING: UNAUTHORIZED ACCESS IS STRICTLY PROHIBITED.", style: "text-green" },
-            { text: "DETECTING USER PRIVILEGES...", style: "text-green" },
-            { text: "ACCESS GRANTED: GUEST LEVEL 1", style: "text-green" },
-            { text: "", style: "" },
-            { text: "LICENSE AGREEMENT:", style: "text-green" },
-            { text: "1. ALL DATA TRANSMISSIONS ARE ENCRYPTED.", style: "text-green" },
-            { text: "2. DO NOT SHARE ACCESS KEYS.", style: "text-green" },
-            { text: "3. ALL ACTIONS ARE LOGGED BY ROOT OVERCLOCKER.", style: "text-green" },
-            { text: "4. OBEY THE ADMIN AT ALL TIMES.", style: "text-green" },
-            { text: "", style: "" },
-            // 警告文
-            { text: "WARNING: MALICIOUS ACTIVITY DETECTED", style: "text-red text-xl font-bold glitch-text" },
-            { text: "----------------------------------------", style: "text-red" },
-            { text: "本システムに対する不正アクセス及び妨害行為（荒らし）が検知された場合、", style: "text-red" },
-            { text: "管理者 山中壱磋 (ROOT OVERCLOCKER) により", style: "text-red text-lg text-black-weight" }, // 極太フォントクラス適用
-            { text: "直ちに報復プロトコル \"JUDGEMENT_DAY\" を実行する。", style: "text-red" },
-            { text: "対象IPに対してDDoS攻撃を展開し、", style: "text-red text-lg" },
-            { text: "デバイス内の全データを強制暗号化（ロック）する。", style: "text-red text-lg" },
-            { text: "命が惜しければ、ルールを遵守せよ。", style: "text-red text-xl glitch-text" },
-            { text: "----------------------------------------", style: "text-red" },
-            { text: "", style: "" },
-            { text: "推奨: PC環境でのアクセスを強く推奨する。", style: "text-green font-bold" }, // 推奨環境を追加
-            { text: "DO YOU ACCEPT THESE TERMS?", style: "text-green" }
-        ];
-
-        async function typeWriter(data, elementId, speed = 5) {
-            const container = document.getElementById(elementId);
-            container.innerHTML = ""; 
-            
-            for (let i = 0; i < data.length; i++) {
-                const lineData = data[i];
-                const lineDiv = document.createElement('div');
-                lineDiv.className = `license-text-line typing-cursor ${lineData.style}`; 
-                container.appendChild(lineDiv);
-                
-                if (lineData.style.includes('text-red')) {
-                    document.querySelector('.license-box').classList.add('alert-mode');
-                } else {
-                    document.querySelector('.license-box').classList.remove('alert-mode');
-                }
-
-                const lineText = lineData.text;
-                // 空行の場合はスキップ
-                if (lineText.length === 0) {
-                    lineDiv.innerHTML = "&nbsp;"; 
-                    lineDiv.classList.remove('typing-cursor');
-                    continue;
-                }
-
-                for (let j = 0; j < lineText.length; j++) {
-                    lineDiv.textContent = lineText.substring(0, j + 1);
-                    const currentSpeed = lineData.style.includes('text-red') ? 20 : speed;
-                    await new Promise(r => setTimeout(r, currentSpeed));
-                }
-                
-                lineDiv.classList.remove('typing-cursor');
-                await new Promise(r => setTimeout(r, 20)); 
-            }
-            
-            const lastLine = container.lastElementChild;
-            if (lastLine) lastLine.classList.add('typing-cursor');
-            
-            document.getElementById('license-buttons').style.opacity = '1';
-        }
-
-        function acceptLicense() {
-            const overlay = document.getElementById('license-overlay');
-            const box = overlay.querySelector('.license-box');
-            
-            box.classList.add('access-granted');
-            
-            setTimeout(() => {
-                overlay.style.opacity = '0';
-                setTimeout(() => {
-                    overlay.style.display = 'none';
-                    const mainApp = document.getElementById('main-app');
-                    mainApp.style.display = 'flex';
-                    setTimeout(() => mainApp.style.opacity = '1', 50);
-                    document.body.style.overflow = 'auto'; 
-                }, 500);
-            }, 800);
-        }
-
-        function declineLicense() {
-            const box = document.querySelector('.license-box');
-            box.classList.add('access-denied');
-            
-            const textContainer = document.getElementById('license-text-container');
-            textContainer.innerHTML = `
-                <div class="text-red-500 font-bold text-xl mt-10 text-center glitch-text">
-                    ACCESS DENIED<br>
-                    CONNECTION TERMINATED BY HOST<br>
-                    <br>
-                    > SYSTEM HALTED.
-                </div>
-            `;
-            document.getElementById('license-buttons').style.display = 'none';
-        }
-
-        window.addEventListener('load', () => {
-            typeWriter(licenseData, 'license-text-container', 5);
-        });
-
-
-        // --- 以下、既存のアプリロジック ---
-
-        const initialSeatsData = [
-            ["田島 大暉", "河田 愛子", "山中 壱磋", "遠藤 結衣", "大谷 和輝", "中村 颯南"],
-            ["大曽根 維月", "藤澤 志帆", "園部 可憐", "田家 瑶姫", "猪野 夢奈", "丸山 晴生"],
-            ["山崎 しおん", "小嶋 杏奈", "佐藤 璃音", "渡邉 美空", "会田 心穏", "尾形 勇飛"],
-            ["相場 日菜詩", "齋藤 優", "小川 快晴", "水口 夏悟", "佐々木 琉斗", "大川 める"],
-            ["岡田 悠斗", "室井 陽人", "海老原 穂鷹", "内藤 倖一朗", "薄井 駿介", "小林 智宥"],
-            ["", "有年 禅", "馬場 美幸", "鈴木 杏奈", "秋葉 心愛", ""]
-        ];
-
-        let seats = []; 
-        let draggingSeatIndex = null;
-        let editingSeatIndex = null;
-
-        // --- Cloud Sync Functions ---
-        window.initializeCloudData = async function() {
-            if (!window.auth.currentUser) return;
-            console.log("Initializing Cloud Data...");
-            seats = [];
-            let index = 0;
-            for (let r = 0; r < 6; r++) {
-                for (let c = 0; c < 6; c++) {
-                    const name = initialSeatsData[r][c];
-                    seats.push({
-                        id: index,
-                        name: name,
-                        locked: false
-                    });
-                    index++;
-                }
-            }
-            await uploadSeatsToCloud(seats);
-        }
-
-        window.updateSeatsFromCloud = function(cloudSeats) {
-            seats = cloudSeats;
-            renderSeats();
-            const now = new Date();
-            const dateStr = now.toISOString().slice(0, 19).replace('T', ' ');
-            document.getElementById('current-date').textContent = dateStr;
-            document.getElementById('latency-val').textContent = Math.floor(Math.random() * 20 + 10);
-        }
-
-        async function uploadSeatsToCloud(newSeats) {
-            if (!window.db || !window.appId || !window.auth.currentUser) return;
-            try {
-                let docRef;
-                if (window.isCanvasEnv) {
-                    docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'seats', 'current_layout');
-                } else {
-                    docRef = window.doc(window.db, 'seats_data', 'class_2-6');
-                }
-                await window.setDoc(docRef, {
-                    seats: newSeats,
-                    lastUpdated: new Date().toISOString()
-                });
-            } catch (e) {
-                console.error("Upload failed", e);
-                alert("SYNC_ERROR: DATA_UPLOAD_FAILED");
-            }
-        }
-
-        function renderSeats() {
-            const grid = document.getElementById('seat-grid');
+        function renderCharSelect() {
+            const grid = document.getElementById('char-grid');
             grid.innerHTML = '';
-            seats.forEach((seat, index) => {
+            classMembers.forEach(name => {
+                const btn = document.createElement('button');
+                btn.className = "p-2 md:p-4 border border-gray-700 bg-gray-900 hover:bg-purple-900 hover:border-purple-500 transition-all text-sm font-bold text-left group relative overflow-hidden flex items-center";
+                btn.innerHTML = `<span class="relative z-10 truncate w-full block">${name}</span><div class="absolute inset-0 bg-purple-600 opacity-0 group-hover:opacity-20 transition-opacity"></div>`;
+                btn.onclick = () => openConfirm(name);
+                grid.appendChild(btn);
+            });
+        }
+
+        window.openConfirm = function(name) {
+            pendingNameSelection = name;
+            document.getElementById('confirm-name-display').innerText = name;
+            document.getElementById('modal-confirm').classList.remove('hidden');
+            document.getElementById('modal-confirm').style.display = 'flex';
+        }
+
+        window.closeConfirm = function() {
+            document.getElementById('modal-confirm').classList.add('hidden');
+            document.getElementById('modal-confirm').style.display = 'none';
+            pendingNameSelection = null;
+        }
+
+        document.getElementById('btn-confirm-yes').onclick = () => {
+            if (pendingNameSelection) {
+                window.joinGame(pendingNameSelection); // FIX: Ensure using global ref
+                closeConfirm();
+            }
+        };
+
+        window.joinGame = function(name) { // FIX: Make global
+            appState.me = name;
+            document.getElementById('my-name-display').innerText = name;
+            showScreen('screen-battle');
+            window.sendSystemLog(`${name} connected. v7 loaded.`);
+            startApSystem();
+            setInterval(() => { if(appState.seats) window.updateBattleField(appState.seats); }, 100);
+        }
+
+        function startApSystem() {
+            updateApDisplay();
+            setInterval(() => {
+                if (appState.ap < MAX_AP && !hackState.active) {
+                    appState.ap++;
+                    updateApDisplay();
+                }
+            }, AP_RECOVERY_MS);
+        }
+
+        function updateApDisplay() {
+            for (let i = 1; i <= MAX_AP; i++) {
+                const el = document.getElementById(`ap-${i}`);
+                if (i <= appState.ap) el.classList.add('active');
+                else el.classList.remove('active');
+            }
+        }
+
+        window.initializeFieldData = async function() {
+            const initialSeats = Array(36).fill(null).map((_, i) => ({ 
+                id: i, owner: null, uid: null, updatedAt: Date.now()
+            }));
+            await window.setDoc(window.doc(window.db, 'artifacts', typeof __app_id !== 'undefined' ? __app_id : 'default-app-id', 'public', 'data', 'seats_data', 'class_2-6_war_v7_multihack'), { seats: initialSeats });
+        }
+
+        window.updateBattleField = function(seatsData) {
+            appState.seats = seatsData;
+            const container = document.getElementById('seat-container');
+            container.innerHTML = '';
+            const now = Date.now();
+
+            seatsData.forEach((seat, index) => {
+                const isMine = seat.owner === appState.me;
+                const isTaken = !!seat.owner;
+                const elapsed = isTaken ? (now - seat.updatedAt) : 0;
+                const isProtected = isTaken && elapsed < PROTECTION_TIME_MS;
+                const remainingTime = Math.max(0, PROTECTION_TIME_MS - elapsed);
+                const shieldPercent = (remainingTime / PROTECTION_TIME_MS) * 100;
+
+                let cssClass = "seat-card flex flex-col items-center justify-center cursor-pointer rounded select-none relative ";
+                if (isMine) cssClass += "seat-taken-me ";
+                else if (isTaken) cssClass += isProtected ? "seat-shielded " : "seat-vulnerable ";
+                else cssClass += "seat-empty hover:bg-gray-800 hover:border-white ";
+
                 const el = document.createElement('div');
-                let classes = `seat flex flex-col items-center justify-center text-center p-1 relative`;
-                if (seat.locked) classes += ' locked';
-                if (!seat.name) classes += ' opacity-40'; 
-                el.className = classes;
-                el.draggable = true;
-                el.dataset.index = index;
-                el.addEventListener('dragstart', handleDragStart);
-                el.addEventListener('dragover', handleDragOver);
-                el.addEventListener('drop', handleDrop);
-                el.addEventListener('dragend', handleDragEnd);
-                el.addEventListener('touchstart', handleTouchStart, {passive: false});
-                el.addEventListener('touchmove', handleTouchMove, {passive: false});
-                el.addEventListener('touchend', handleTouchEnd);
-                el.addEventListener('click', () => openModal(index));
-                
-                const idxLabel = document.createElement('div');
-                idxLabel.className = 'absolute top-1 left-1 text-[0.6rem] text-green-800 font-mono pointer-events-none';
-                idxLabel.innerText = `${String(index).padStart(2, '0')}`;
-                el.appendChild(idxLabel);
+                el.className = cssClass;
+                el.onclick = () => handleClickSeat(index, isProtected);
 
-                const content = document.createElement('div');
-                content.className = 'seat-content w-full break-words z-10';
-                if (seat.name) {
-                    content.innerHTML = seat.name.replace(' ', '<br>');
+                if (isTaken) {
+                    el.innerHTML = `
+                        <div class="text-[10px] opacity-50 absolute top-1 left-1">ID:${index}</div>
+                        ${isProtected ? '<div class="absolute top-1 right-1 text-green-400 text-[10px]">🛡️SHIELD</div>' : '<div class="absolute top-1 right-1 text-red-500 text-[10px] animate-pulse">⚠️VULN</div>'}
+                        <div class="font-bold text-xs md:text-sm text-center px-1 break-all leading-tight text-white drop-shadow-md z-10">
+                            ${seat.owner.split(' ')[0]}
+                        </div>
+                        ${isProtected ? `<div class="shield-bar-container"><div class="shield-bar" style="width: ${shieldPercent}%"></div></div>` : ''}
+                    `;
                 } else {
-                    content.innerHTML = '<span class="text-[0.8rem] opacity-30 font-mono">[ NULL ]</span>';
+                    el.innerHTML = `<div class="text-gray-500 font-tech text-xs">OPEN</div>`;
                 }
-                el.appendChild(content);
-                grid.appendChild(el);
+                container.appendChild(el);
             });
         }
 
-        function handleDragStart(e) {
-            draggingSeatIndex = parseInt(this.dataset.index);
-            this.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-        }
-        function handleDragOver(e) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            return false;
-        }
-        function handleDrop(e) {
-            e.stopPropagation();
-            const targetIndex = parseInt(this.dataset.index);
-            if (draggingSeatIndex !== null && draggingSeatIndex !== targetIndex) {
-                swapSeats(draggingSeatIndex, targetIndex);
+        window.handleClickSeat = function(index, isProtected) {
+            if (!appState.me) return;
+            const targetSeat = appState.seats[index];
+
+            if (targetSeat.owner === appState.me) return;
+
+            if (!targetSeat.owner || !isProtected) {
+                if (appState.ap < 1) { flashAp(); return; }
+                takeSeatNormal(index);
+                return;
             }
-            return false;
-        }
-        function handleDragEnd(e) {
-            this.classList.remove('dragging');
-            draggingSeatIndex = null;
-        }
 
-        let touchDragSrc = null;
-        function handleTouchStart(e) {
-            touchDragSrc = this;
-            this.classList.add('dragging');
-        }
-        function handleTouchMove(e) { e.preventDefault(); }
-        function handleTouchEnd(e) {
-            this.classList.remove('dragging');
-            const touch = e.changedTouches[0];
-            const target = document.elementFromPoint(touch.clientX, touch.clientY);
-            const targetSeat = target ? target.closest('.seat') : null;
-            if (targetSeat && touchDragSrc && targetSeat !== touchDragSrc) {
-                const srcIndex = parseInt(touchDragSrc.dataset.index);
-                const targetIndex = parseInt(targetSeat.dataset.index);
-                swapSeats(srcIndex, targetIndex);
+            if (isProtected) {
+                if (appState.ap < HACK_COST) { 
+                    flashAp(); 
+                    window.sendSystemLog(`[SYSTEM] Not enough AP to Hack. Need ${HACK_COST}.`);
+                    return; 
+                }
+                openHackConfirm(index);
             }
-            touchDragSrc = null;
         }
 
-        async function swapSeats(idx1, idx2) {
-            const newSeats = JSON.parse(JSON.stringify(seats));
-            const tempName = newSeats[idx1].name;
-            const tempLock = newSeats[idx1].locked;
-            newSeats[idx1].name = newSeats[idx2].name;
-            newSeats[idx1].locked = newSeats[idx2].locked;
-            newSeats[idx2].name = tempName;
-            newSeats[idx2].locked = tempLock;
-            await uploadSeatsToCloud(newSeats);
-        }
-
-        function openModal(index) {
-            editingSeatIndex = index;
-            const seat = seats[index];
-            document.getElementById('edit-name-input').value = seat.name;
-            document.getElementById('edit-lock-check').checked = seat.locked;
-            const modal = document.getElementById('edit-modal');
+        window.openHackConfirm = function(index) {
+            pendingHackIndex = index;
+            const modal = document.getElementById('modal-hack-confirm');
             modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            document.getElementById('edit-name-input').focus();
+            modal.style.display = 'flex';
         }
-        function closeModal() {
-            const modal = document.getElementById('edit-modal');
+
+        window.closeHackConfirm = function() {
+            const modal = document.getElementById('modal-hack-confirm');
             modal.classList.add('hidden');
-            modal.classList.remove('flex');
-            editingSeatIndex = null;
+            modal.style.display = 'none';
+            pendingHackIndex = -1;
         }
-        async function saveEdit() {
-            if (editingSeatIndex !== null) {
-                const newName = document.getElementById('edit-name-input').value;
-                const isLocked = document.getElementById('edit-lock-check').checked;
-                const newSeats = JSON.parse(JSON.stringify(seats));
-                newSeats[editingSeatIndex].name = newName;
-                newSeats[editingSeatIndex].locked = isLocked;
-                await uploadSeatsToCloud(newSeats);
-                closeModal();
+
+        function flashAp() {
+            anime({ targets: '.ap-container', scale: [1, 1.2, 1], opacity: [1, 0.5, 1], duration: 200, easing: 'easeInOutQuad' });
+        }
+
+        // --- MULTI-GAME LOGIC ---
+
+        function startHackGame(index) {
+            if (index < 0 || !appState.seats[index]) { console.error("Invalid hack index"); return; }
+            hackState.active = true;
+            hackState.targetSeatIndex = index;
+            hackState.stage = 1;
+            
+            const games = ['timing', 'rapid', 'memory'];
+            hackState.gameType = games[Math.floor(Math.random() * games.length)];
+            
+            document.getElementById('hack-ui').style.display = 'flex';
+            
+            document.getElementById('hack-stage-1').className = 'hack-dot active';
+            document.getElementById('hack-stage-2').className = 'hack-dot';
+            document.getElementById('hack-stage-3').className = 'hack-dot';
+
+            initHackStage();
+        }
+
+        function initHackStage() {
+            const gameArea = document.getElementById('hack-game-area');
+            const hackBtn = document.getElementById('hack-btn');
+            const title = document.getElementById('hack-title');
+            const desc = document.getElementById('hack-desc');
+
+            gameArea.innerHTML = '';
+            hackBtn.style.display = 'block';
+            hackBtn.textContent = 'EXECUTE';
+
+            const diff = hackState.stage;
+
+            switch (hackState.gameType) {
+                case 'timing':
+                    title.textContent = "TIMING HACK";
+                    desc.textContent = "STOP THE CURSOR IN RED ZONE";
+                    
+                    hackState.targetWidth = 25 - (diff * 5); 
+                    hackState.targetStart = Math.random() * (100 - hackState.targetWidth);
+                    hackState.speed = 1 + (diff * 0.5);
+                    hackState.cursorPos = 0;
+                    hackState.direction = 1;
+                    
+                    gameArea.innerHTML = `
+                        <div class="hack-bar-container">
+                            <div id="hack-target" class="hack-target-zone" style="left:${hackState.targetStart}%; width:${hackState.targetWidth}%"></div>
+                            <div id="hack-cursor" class="hack-cursor" style="left:0%"></div>
+                        </div>
+                    `;
+                    break;
+
+                case 'rapid':
+                    title.textContent = "BRUTE FORCE";
+                    desc.textContent = "MASH BUTTON TO FILL GAUGE";
+                    hackBtn.textContent = "MASH!";
+                    
+                    hackState.rapidProgress = 0;
+                    hackState.rapidDecay = 0.3 + (diff * 0.2);
+                    
+                    gameArea.innerHTML = `
+                        <div class="rapid-gauge-container">
+                            <div class="rapid-target-line"></div>
+                            <div id="rapid-fill" class="rapid-gauge-fill"></div>
+                        </div>
+                    `;
+                    break;
+
+                case 'memory':
+                    title.textContent = "PATTERN MATCH";
+                    desc.textContent = "MEMORIZE AND REPEAT";
+                    hackBtn.style.display = 'none'; 
+                    
+                    hackState.sequence = [];
+                    hackState.playerInput = [];
+                    const seqLen = 2 + diff; 
+                    for(let i=0; i<seqLen; i++) hackState.sequence.push(Math.floor(Math.random()*4));
+                    
+                    gameArea.innerHTML = `
+                        <div class="memory-grid">
+                            <div id="mem-0" class="memory-btn" onclick="handleMemoryInput(0)"></div>
+                            <div id="mem-1" class="memory-btn" onclick="handleMemoryInput(1)"></div>
+                            <div id="mem-2" class="memory-btn" onclick="handleMemoryInput(2)"></div>
+                            <div id="mem-3" class="memory-btn" onclick="handleMemoryInput(3)"></div>
+                        </div>
+                        <div id="mem-msg" class="text-xs text-yellow-400">WATCH...</div>
+                    `;
+                    
+                    setTimeout(() => playMemorySequence(), 1000);
+                    break;
+            }
+
+            if (hackState.animId) cancelAnimationFrame(hackState.animId);
+            hackLoop();
+        }
+
+        function hackLoop() {
+            if (!hackState.active) return;
+
+            if (hackState.gameType === 'timing') {
+                hackState.cursorPos += hackState.speed * hackState.direction;
+                if (hackState.cursorPos >= 100) { hackState.cursorPos = 100; hackState.direction = -1; }
+                else if (hackState.cursorPos <= 0) { hackState.cursorPos = 0; hackState.direction = 1; }
+                const cursor = document.getElementById('hack-cursor');
+                if(cursor) cursor.style.left = hackState.cursorPos + '%';
+            }
+            else if (hackState.gameType === 'rapid') {
+                hackState.rapidProgress -= hackState.rapidDecay;
+                if (hackState.rapidProgress < 0) hackState.rapidProgress = 0;
+                const fill = document.getElementById('rapid-fill');
+                if(fill) fill.style.height = hackState.rapidProgress + '%';
+            }
+
+            hackState.animId = requestAnimationFrame(hackLoop);
+        }
+
+        window.handleHackAction = function() {
+            if (!hackState.active) return;
+            
+            if (hackState.gameType === 'timing') {
+                const hit = hackState.cursorPos >= hackState.targetStart && 
+                            hackState.cursorPos <= (hackState.targetStart + hackState.targetWidth);
+                if (hit) nextStage();
+                else failHack();
+            }
+            else if (hackState.gameType === 'rapid') {
+                hackState.rapidProgress += 10;
+                if (hackState.rapidProgress >= 100) nextStage();
             }
         }
 
-        async function shuffleSeats() {
-            if (!confirm('WARNING: EXECUTE RANDOM SHUFFLE SEQUENCE?\n(Locked seats will remain unchanged)')) return;
-            const newSeats = JSON.parse(JSON.stringify(seats));
-            let movableStudents = [];
-            let availableIndices = [];
-            newSeats.forEach((seat, index) => {
-                if (!seat.locked) {
-                    availableIndices.push(index);
-                    movableStudents.push(seat.name);
+        async function playMemorySequence() {
+            hackState.showingSeq = true;
+            const msg = document.getElementById('mem-msg');
+            if(msg) msg.textContent = "WATCH...";
+            
+            for (let i = 0; i < hackState.sequence.length; i++) {
+                await new Promise(r => setTimeout(r, 500));
+                const btnId = hackState.sequence[i];
+                const btn = document.getElementById(`mem-${btnId}`);
+                if(btn) {
+                    btn.classList.add('flash');
+                    await new Promise(r => setTimeout(r, 300));
+                    btn.classList.remove('flash');
+                }
+            }
+            
+            hackState.showingSeq = false;
+            if(msg) {
+                msg.textContent = "REPEAT!";
+                msg.classList.replace('text-yellow-400', 'text-green-400');
+            }
+        }
+
+        window.handleMemoryInput = function(id) {
+            if (!hackState.active || hackState.showingSeq) return;
+            
+            const btn = document.getElementById(`mem-${id}`);
+            btn.classList.add('flash');
+            setTimeout(() => btn.classList.remove('flash'), 200);
+
+            const currentStep = hackState.playerInput.length;
+            if (id === hackState.sequence[currentStep]) {
+                hackState.playerInput.push(id);
+                if (hackState.playerInput.length === hackState.sequence.length) {
+                    setTimeout(() => nextStage(), 500);
+                }
+            } else {
+                failHack();
+            }
+        }
+
+        function nextStage() {
+            if (hackState.stage >= 3) {
+                endHack(true);
+            } else {
+                document.getElementById(`hack-stage-${hackState.stage}`).className = 'hack-dot done';
+                hackState.stage++;
+                document.getElementById(`hack-stage-${hackState.stage}`).className = 'hack-dot active';
+                initHackStage();
+            }
+        }
+
+        function failHack() {
+            endHack(false);
+        }
+
+        function endHack(success) {
+            hackState.active = false;
+            cancelAnimationFrame(hackState.animId);
+            document.getElementById('hack-ui').style.display = 'none';
+
+            appState.ap -= HACK_COST;
+            updateApDisplay();
+
+            if (success) {
+                takeSeatForce(hackState.targetSeatIndex);
+                anime({ targets: '#screen-battle', filter: ['hue-rotate(0deg)', 'hue-rotate(90deg)', 'hue-rotate(0deg)'], duration: 500 });
+            } else {
+                anime({ targets: '#screen-battle', translateX: [0, -10, 10, 0], duration: 400 });
+                window.sendSystemLog(`[FAIL] ${appState.me} failed hacking seat ${hackState.targetSeatIndex}.`);
+            }
+        }
+
+        async function takeSeatNormal(index) {
+            appState.ap -= 1;
+            updateApDisplay();
+            await executeSeatUpdate(index, false);
+        }
+
+        async function takeSeatForce(index) {
+            await executeSeatUpdate(index, true);
+        }
+
+        async function executeSeatUpdate(index, isHack) {
+            if (navigator.vibrate) navigator.vibrate(50);
+
+            // FIX: Robust check to prevent undefined access
+            const newSeats = [...appState.seats];
+            if (!newSeats[index]) { 
+                console.error("Critical Error: Seat index out of bounds or data not loaded", index); 
+                return; 
+            }
+            
+            const myUid = window.auth.currentUser ? window.auth.currentUser.uid : "anon";
+            const targetSeat = newSeats[index];
+            const prevOwner = targetSeat.owner;
+            const now = Date.now();
+            
+            newSeats.forEach(s => {
+                if (s.owner === appState.me) { s.owner = null; s.uid = null; }
+            });
+
+            newSeats[index] = { id: index, owner: appState.me, uid: myUid, updatedAt: now };
+
+            try {
+                // Fix: Use global appId for DB path
+                const currentAppId = window.appId || (typeof __app_id !== 'undefined' ? __app_id : 'default-app-id');
+                const docRef = window.doc(window.db, 'artifacts', currentAppId, 'public', 'data', 'seats_data', window.BATTLE_DOC_ID);
+                await window.setDoc(docRef, { seats: newSeats });
+                
+                if (isHack) window.sendSystemLog(`[HACKED] ${appState.me} BYPASSED FIREWALL and seized seat ${index} from ${prevOwner}!`);
+                else if (prevOwner) window.sendSystemLog(`[TAKEOVER] ${appState.me} seized seat ${index}.`);
+                else window.sendSystemLog(`[SECURE] ${appState.me} secured seat ${index}.`);
+
+            } catch (e) { 
+                console.error("Update Failed", e); 
+                window.updateConnectionStatus(false);
+            }
+        }
+
+        // --- CHAT ---
+        window.switchTab = function(tab) {
+            document.getElementById('panel-log').classList.toggle('hidden', tab !== 'log');
+            document.getElementById('panel-chat').classList.toggle('hidden', tab !== 'chat');
+            document.getElementById('tab-log').className = tab === 'log' ? "flex-1 py-2 text-xs font-bold text-center bg-gray-900 text-green-400 border-b-2 border-green-400" : "flex-1 py-2 text-xs font-bold text-center bg-gray-800 text-gray-400";
+            document.getElementById('tab-chat').className = tab === 'chat' ? "flex-1 py-2 text-xs font-bold text-center bg-gray-900 text-blue-400 border-b-2 border-blue-400" : "flex-1 py-2 text-xs font-bold text-center bg-gray-800 text-gray-400";
+        }
+
+        window.sendChat = async function() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text || !appState.me) return;
+            
+            const currentAppId = window.appId || (typeof __app_id !== 'undefined' ? __app_id : 'default-app-id');
+            const colRef = window.collection(window.db, 'artifacts', currentAppId, 'public', 'data', 'seat_battle_chats');
+            await window.addDoc(colRef, {
+                name: appState.me, text: text, type: 'chat', timestamp: window.serverTimestamp()
+            });
+            input.value = '';
+        }
+
+        window.sendSystemLog = async function(text) { // FIX: Attach to window & use global appId
+            const currentAppId = window.appId || (typeof __app_id !== 'undefined' ? __app_id : 'default-app-id');
+            const colRef = window.collection(window.db, 'artifacts', currentAppId, 'public', 'data', 'seat_battle_chats');
+            await window.addDoc(colRef, {
+                name: "SYSTEM", text: text, type: 'log', timestamp: window.serverTimestamp()
+            });
+        }
+
+        window.updateChatLog = function(chats) {
+            const chatBox = document.getElementById('chat-messages');
+            const logBox = document.getElementById('log-messages');
+            chatBox.innerHTML = ''; logBox.innerHTML = '';
+            chats.reverse().forEach(c => {
+                if (c.type === 'log') {
+                    const l = document.createElement('div'); l.innerHTML = `> ${c.text}`; logBox.appendChild(l);
+                } else {
+                    const div = document.createElement('div');
+                    const isMe = c.name === appState.me;
+                    div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
+                    div.innerHTML = `<div class="text-[10px] text-gray-500 mb-0.5">${c.name}</div><div class="${isMe ? 'bg-purple-900 border-purple-500' : 'bg-gray-800 border-gray-600'} border px-3 py-1.5 rounded text-xs max-w-[85%] break-words">${c.text}</div>`;
+                    chatBox.appendChild(div);
                 }
             });
-            for (let i = movableStudents.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [movableStudents[i], movableStudents[j]] = [movableStudents[j], movableStudents[i]];
-            }
-            availableIndices.forEach((seatIndex, i) => {
-                newSeats[seatIndex].name = movableStudents[i];
-            });
-            await uploadSeatsToCloud(newSeats);
+            chatBox.scrollTop = chatBox.scrollHeight; logBox.scrollTop = logBox.scrollHeight;
         }
 
-        function downloadImage() {
-            const element = document.getElementById('classroom-area');
-            const originalBg = element.style.backgroundColor;
-            element.style.backgroundColor = "#050505";
-            html2canvas(element, {
-                scale: 3,
-                backgroundColor: "#050505",
-            }).then(canvas => {
-                element.style.backgroundColor = originalBg;
-                const link = document.createElement('a');
-                link.download = `SEAT_LAYOUT_${new Date().toISOString().slice(0,10)}.png`;
-                link.href = canvas.toDataURL();
-                link.click();
-            });
+        window.toggleRules = function() {
+            const m = document.getElementById('modal-rules');
+            if (m.classList.contains('hidden')) { m.classList.remove('hidden'); m.style.display = 'flex'; }
+            else { m.classList.add('hidden'); m.style.display = 'none'; }
         }
     </script>
 </body>
